@@ -58,17 +58,12 @@ func main() {
 		}
 	case "select":
 		{
-			c := []*Cell{
-				{ColumnDescriptor{name: "id1", dataType: uniqueidentifier}, nil},
-				{ColumnDescriptor{name: "id2", dataType: uniqueidentifier}, nil},
-			}
-
-			err := readTableRow("dbo", "users", c)
+			cells, err := readTableRow("dbo", "users")
 			if err != nil {
 				panic(err)
 			}
 
-			fmt.Printf("%s", c)
+			fmt.Printf("INFO: query result %s", cells)
 		}
 	}
 

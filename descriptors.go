@@ -45,7 +45,7 @@ func cretateTable(td TableDescriptor) error {
 	}
 	defer schemeF.Close()
 
-	_, err = schemeF.WriteString(getTableDescriptorAsString(td))
+	_, err = schemeF.WriteString(fmt.Sprintf("%s\n", getTableDescriptorAsString(td)))
 	if err != nil {
 		return err
 	}
@@ -104,9 +104,12 @@ func readTableRow(scheme, name string) ([]Cell, error) {
 	}
 	defer f.Close()
 
-	tableDescriptor := buildTableDescriptor(scheme, name)
-	cells := make([]Cell, 10)
-	buf := make([]byte, 1024) // buffer should be calculated based od schema row
+	td := buildTableDescriptor(scheme, name)
+
+	fmt.Printf("INFO: %s.%s table descriptor %s\n", scheme, name, td)
+	cells := make([]Cell, 0)
+	buf := make([]byte, 1024) // buffer should be calculated based od schema row + delimeters etc
+
 	for {
 		n, err := f.Read(buf)
 		if err != nil && err != io.EOF {
@@ -117,16 +120,21 @@ func readTableRow(scheme, name string) ([]Cell, error) {
 			break
 		}
 
-		for _, cd := tableDescriptor.columnDescriptors {
-			
+		for i, cd := range td.columnDescriptors {
+			switch cd.dataType {
+			case uniqueidentifier:
+				{
+					size := getDataTypeSize(uniqueidentifier)
+					cells = append(cells, Cell{
+						columnDescriptor: cd,
+						value:            buf[i*size : (i+1)*size],
+					})
+				}
+			}
 		}
-
-		// two uuids
-		cells[0].value = buf[0:16]
-		cells[1].value = buf[16:32]
 	}
 
-	return nil
+	return cells, nil
 }
 
 func getTableDescriptorAsString(td TableDescriptor) string {
