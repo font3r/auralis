@@ -42,7 +42,7 @@ func TestSelectStatementLexer(t *testing.T) {
 			expected: []TokenLiteral{
 				{kind: keyword, value: "select"},
 				{kind: symbol, value: "id1"},
-				{kind: symbol, value: ","},
+				{kind: comma, value: ","},
 				{kind: symbol, value: "id2"},
 				{kind: keyword, value: "from"},
 				{kind: symbol, value: "users"},
@@ -53,7 +53,7 @@ func TestSelectStatementLexer(t *testing.T) {
 			expected: []TokenLiteral{
 				{kind: keyword, value: "select"},
 				{kind: symbol, value: "id1"},
-				{kind: symbol, value: ","},
+				{kind: comma, value: ","},
 				{kind: symbol, value: "id2"},
 				{kind: keyword, value: "from"},
 				{kind: symbol, value: "users"},
@@ -64,7 +64,7 @@ func TestSelectStatementLexer(t *testing.T) {
 			expected: []TokenLiteral{
 				{kind: keyword, value: "select"},
 				{kind: symbol, value: "id1"},
-				{kind: symbol, value: ","},
+				{kind: comma, value: ","},
 				{kind: symbol, value: "id2"},
 				{kind: keyword, value: "from"},
 				{kind: symbol, value: "users"},
@@ -95,25 +95,30 @@ func TestInsertStatementLexer(t *testing.T) {
 				{kind: keyword, value: "values"},
 				{kind: openingroundbracket, value: "("},
 				{kind: symbol, value: "'1'"},
-				{kind: symbol, value: ","},
+				{kind: comma, value: ","},
 				{kind: symbol, value: "'2'"},
 				{kind: closingroundbracket, value: ")"},
 			},
 		},
-		// {
-		// 	raw: "INSERT INTO users (id1, id2) VALUES ('1','2')",
-		// 	expected: []TokenLiteral{
-		// 		{kind: keyword, value: "insert"},
-		// 		{kind: keyword, value: "into"},
-		// 		{kind: symbol, value: "users"},
-		// 		{kind: keyword, value: "values"},
-		// 		{kind: openingroundbracket, value: "("},
-		// 		{kind: symbol, value: "'1'"},
-		// 		{kind: symbol, value: ","},
-		// 		{kind: symbol, value: "'2'"},
-		// 		{kind: closingroundbracket, value: ")"},
-		// 	},
-		// },
+		{
+			raw: "INSERT INTO users (id1, id2) VALUES ('1','2')",
+			expected: []TokenLiteral{
+				{kind: keyword, value: "insert"},
+				{kind: keyword, value: "into"},
+				{kind: symbol, value: "users"},
+				{kind: openingroundbracket, value: "("},
+				{kind: symbol, value: "id1"},
+				{kind: comma, value: ","},
+				{kind: symbol, value: "id2"},
+				{kind: closingroundbracket, value: ")"},
+				{kind: keyword, value: "values"},
+				{kind: openingroundbracket, value: "("},
+				{kind: symbol, value: "'1'"},
+				{kind: comma, value: ","},
+				{kind: symbol, value: "'2'"},
+				{kind: closingroundbracket, value: ")"},
+			},
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.raw, func(t *testing.T) {
@@ -124,9 +129,3 @@ func TestInsertStatementLexer(t *testing.T) {
 		})
 	}
 }
-
-/*
-
-expect result [{kind:0 value:insert} {kind:0 value:into} {kind:1 value:users} {kind:0 value:values} {kind:2 value:(} {kind:1 value:'1'} {kind:1 value:,} {kind:1 value:'2'} {kind:3 value:)}]
-          got [{kind:0 value:insert} {kind:0 value:into} {kind:1 value:users} {kind:0 value:values} {kind:2 value:(} {kind:1 value:'1'} {kind:1 value:,} {kind:2 value:)} {kind:1 value:}]
-*/

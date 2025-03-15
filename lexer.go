@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"slices"
 	"strings"
 )
@@ -11,6 +10,7 @@ type TokenKind int
 const (
 	keyword TokenKind = iota
 	symbol
+	comma
 	openingroundbracket
 	closingroundbracket
 )
@@ -34,51 +34,50 @@ func Analyze(raw string) []TokenLiteral {
 	l := 0
 	len := len(raw)
 	for r := range len {
-		if raw[r] == byte(' ') {
-			// after jumping l can be equal to r
-			if r == l {
-				l++
-				continue
+		switch raw[r] {
+		case byte(' '):
+			{
+				if r == l {
+					l++
+					continue
+				}
+
+				frag := strings.ToLower(string(raw[l:r]))
+				if slices.Contains(keywords, frag) {
+					tokens = append(tokens, TokenLiteral{kind: keyword, value: frag})
+				} else {
+					tokens = append(tokens, TokenLiteral{kind: symbol, value: frag})
+				}
+
+				l = r + 1
 			}
-
-			frag := strings.ToLower(string(raw[l:r]))
-			if slices.Contains(keywords, frag) {
-				tokens = append(tokens, TokenLiteral{kind: keyword, value: frag})
-			} else {
-				tokens = append(tokens, TokenLiteral{kind: symbol, value: frag})
+		case byte('('):
+			{
+				tokens = append(tokens, TokenLiteral{kind: openingroundbracket, value: string('(')})
+				l = r + 1
 			}
-
-			// always r + 1 if space
-			l = r + 1
-			continue
-		}
-
-		if raw[r] == byte('(') {
-			tokens = append(tokens, TokenLiteral{kind: openingroundbracket, value: string('(')})
-			l = r + 1
-			continue
-		}
-
-		if raw[r] == byte(')') {
-			fmt.Println(string(raw[r]))
-			tokens = append(tokens, TokenLiteral{kind: closingroundbracket, value: string(')')})
-			l = r + 1
-			continue
-		}
-
-		if raw[r] == byte(',') {
-			if raw[r-1] == byte(' ') {
-				tokens = append(tokens, TokenLiteral{kind: symbol, value: string(',')})
-			} else {
+		case byte(')'):
+			{
 				frag := strings.ToLower(string(raw[l:r]))
 				tokens = append(tokens, TokenLiteral{kind: symbol, value: frag})
-				tokens = append(tokens, TokenLiteral{kind: symbol, value: string(',')})
+				tokens = append(tokens, TokenLiteral{kind: closingroundbracket, value: string(')')})
+				l = r + 1
 			}
-			l = r + 1
-			continue
+		case byte(','):
+			{
+				if raw[r-1] == byte(' ') {
+					tokens = append(tokens, TokenLiteral{kind: comma, value: string(',')})
+				} else {
+					frag := strings.ToLower(string(raw[l:r]))
+					tokens = append(tokens, TokenLiteral{kind: symbol, value: frag})
+					tokens = append(tokens, TokenLiteral{kind: comma, value: string(',')})
+				}
+				l = r + 1
+			}
 		}
 
-		if r == len-1 {
+		// l-1 because we assign l = r + 1
+		if r == len-1 && r != l-1 {
 			tokens = append(tokens, TokenLiteral{kind: symbol, value: string(raw[l:len])})
 		}
 	}
