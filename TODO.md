@@ -1,5 +1,6 @@
 ### TODO
 
+[ ] - querying specific fields
 [ ] - basic data structures
     [ ] - varaible numeric types
 [ ] - DML, DDL,

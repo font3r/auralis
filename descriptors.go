@@ -2,6 +2,9 @@ package main
 
 import (
 	"bufio"
+	"bytes"
+	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -30,12 +33,12 @@ type Cell struct {
 type DataType string
 
 const (
-	smallint         DataType = "smallint"
-	integer          DataType = "integer"
-	bigint           DataType = "bigint"
+	smallint         DataType = "smallint" // 2
+	integer          DataType = "integer"  // 4
+	bigint           DataType = "bigint"   // 8
 	varchar          DataType = "varchar"
-	uniqueidentifier DataType = "uniqueidentifier"
-	boolean          DataType = "boolean"
+	uniqueidentifier DataType = "uniqueidentifier" // 16
+	boolean          DataType = "boolean"          // 1
 )
 
 func cretateTable(td TableDescriptor) error {
@@ -71,10 +74,25 @@ func writeIntoTable(scheme, name string, data ...Cell) error {
 	for _, v := range data {
 		var val []byte
 		switch v.columnDescriptor.dataType {
+		case smallint:
+			{
+				buf := bytes.NewBuffer(make([]byte, 0, getDataTypeByteSize(smallint)))
+				err := binary.Write(buf, binary.BigEndian, int16(v.value.(int)))
+				if err != nil {
+					return err
+				}
+
+				val = buf.Bytes()
+			}
 		case uniqueidentifier:
 			{
-				val, _ = v.value.(uuid.UUID).MarshalBinary()
+				val, err = v.value.(uuid.UUID).MarshalBinary()
+				if err != nil {
+					return err
+				}
 			}
+		default:
+			return errors.New("unhandled type")
 		}
 
 		_, err = w.Write(val)
@@ -104,9 +122,9 @@ func readTableRow(scheme, name string) ([]Cell, error) {
 	}
 	defer f.Close()
 
-	td := buildTableDescriptor(scheme, name)
+	storeTd, _ := getTableDescriptorFromStore(scheme, name)
 
-	fmt.Printf("INFO: %s.%s table descriptor %s\n", scheme, name, td)
+	fmt.Printf("INFO: %s.%s table descriptor %s\n", scheme, name, storeTd)
 	cells := make([]Cell, 0)
 	buf := make([]byte, 1024) // buffer should be calculated based od schema row + delimeters etc
 
@@ -120,16 +138,26 @@ func readTableRow(scheme, name string) ([]Cell, error) {
 			break
 		}
 
-		for i, cd := range td.columnDescriptors {
+		for i, cd := range storeTd.columnDescriptors {
 			switch cd.dataType {
-			case uniqueidentifier:
+			case smallint:
 				{
-					size := getDataTypeSize(uniqueidentifier)
+					size := getDataTypeByteSize(smallint)
 					cells = append(cells, Cell{
 						columnDescriptor: cd,
 						value:            buf[i*size : (i+1)*size],
 					})
 				}
+			case uniqueidentifier:
+				{
+					size := getDataTypeByteSize(uniqueidentifier)
+					cells = append(cells, Cell{
+						columnDescriptor: cd,
+						value:            buf[i*size : (i+1)*size],
+					})
+				}
+			default:
+				return []Cell{}, errors.New("unhandled type")
 			}
 		}
 	}
@@ -148,27 +176,21 @@ func getTableDescriptorAsString(td TableDescriptor) string {
 	return b.String()
 }
 
-func buildTableDescriptor(scheme, name string) TableDescriptor {
+func getTableDescriptorFromStore(scheme, name string) (TableDescriptor, error) {
+	// TODO: read table structure from store (maybe should be table as other)
+
 	return TableDescriptor{
 		name:   name,
 		scheme: scheme,
 		columnDescriptors: []ColumnDescriptor{
-			{name: "id1", dataType: uniqueidentifier},
+			{name: "id1", dataType: smallint},
 			{name: "id2", dataType: uniqueidentifier},
+			{name: "id3", dataType: smallint},
 		},
-	}
+	}, nil
 }
 
-func getTableRowByteSize(td TableDescriptor) int {
-	x := 0
-	for _, cd := range td.columnDescriptors {
-		x += getDataTypeSize(cd.dataType)
-	}
-
-	return x
-}
-
-func getDataTypeSize(dataType DataType) int {
+func getDataTypeByteSize(dataType DataType) int {
 	switch dataType {
 	case smallint:
 		return 2 // int16
@@ -177,12 +199,12 @@ func getDataTypeSize(dataType DataType) int {
 	case bigint:
 		return 8 // int64
 	case varchar:
-		return 8 // <- TOOD: this should be configurable
+		return 8 // TODO: this should be configurable
 	case uniqueidentifier:
 		return 16
 	case boolean:
 		return 1
+	default:
+		panic("unhandled type")
 	}
-
-	panic("ERROR: unsupported datatype")
 }
