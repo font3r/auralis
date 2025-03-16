@@ -68,6 +68,20 @@ func TestParser(t *testing.T) {
 				columns: []string{"*"},
 			},
 		},
+		"valid select specific columns from table": {
+			tokens: []TokenLiteral{
+				{kind: keyword, value: "select"},
+				{kind: symbol, value: "id1"},
+				{kind: comma, value: ","},
+				{kind: symbol, value: "id2"},
+				{kind: keyword, value: "from"},
+				{kind: symbol, value: "users"},
+			},
+			expectedCmd: SelectQuery{
+				source:  SchemeTable[string, string]{"dbo", "users"},
+				columns: []string{"id1", "id2"},
+			},
+		},
 	}
 	for test, tC := range testCases {
 		t.Run(test, func(t *testing.T) {

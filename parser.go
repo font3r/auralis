@@ -59,12 +59,12 @@ func parseSelect(tokens *[]TokenLiteral) (SelectQuery, error) {
 
 	// * or csv columns
 	for ; i < len(v); i++ {
-		if v[i].kind != symbol {
-			break
+		if v[i].kind == comma {
+			continue
 		}
 
-		if v[i].value == string(",") {
-			continue
+		if v[i].kind != symbol {
+			break
 		}
 
 		q.columns = append(q.columns, v[i].value)
