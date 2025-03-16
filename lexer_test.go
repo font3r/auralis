@@ -70,6 +70,19 @@ func TestSelectStatementLexer(t *testing.T) {
 				{kind: symbol, value: "users"},
 			},
 		},
+		{
+			raw: "SELECT id1, id2, id3 FROM users",
+			expected: []TokenLiteral{
+				{kind: keyword, value: "select"},
+				{kind: symbol, value: "id1"},
+				{kind: comma, value: ","},
+				{kind: symbol, value: "id2"},
+				{kind: comma, value: ","},
+				{kind: symbol, value: "id3"},
+				{kind: keyword, value: "from"},
+				{kind: symbol, value: "users"},
+			},
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.raw, func(t *testing.T) {
