@@ -32,6 +32,10 @@ type Cell struct {
 
 type DataType string
 
+var (
+	ErrTableNotFound = AuraError{Code: "0001", Message: "table not found"}
+)
+
 const (
 	smallint         DataType = "smallint" // 2
 	integer          DataType = "integer"  // 4
@@ -44,6 +48,9 @@ const (
 func cretateTable(td TableDescriptor) error {
 	schemeF, err := os.OpenFile(fmt.Sprintf("./data/%s", schemeStore), os.O_RDWR, 0600)
 	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return ErrTableNotFound
+		}
 		return err
 	}
 	defer schemeF.Close()
@@ -65,6 +72,9 @@ func cretateTable(td TableDescriptor) error {
 func writeIntoTable(scheme, name string, data ...Cell) error {
 	f, err := os.OpenFile(fmt.Sprintf("./data/%s.%s", scheme, name), os.O_WRONLY|os.O_APPEND, 0600)
 	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return ErrTableNotFound
+		}
 		return err
 	}
 	defer f.Close()
@@ -115,16 +125,20 @@ func writeIntoTable(scheme, name string, data ...Cell) error {
 	return nil
 }
 
-func readTableRow(scheme, name string) ([]Cell, error) {
-	f, err := os.Open(fmt.Sprintf("./data/%s.%s", scheme, name))
+func readTableRow(source SchemeTable[string, string]) ([]Cell, error) {
+	f, err := os.Open(fmt.Sprintf("./data/%s.%s", source.scheme, source.name))
 	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, ErrTableNotFound
+		}
+
 		return nil, err
 	}
 	defer f.Close()
 
-	storeTd, _ := getTableDescriptorFromStore(scheme, name)
+	storeTd, _ := getTableDescriptorFromStore(source.scheme, source.name)
 
-	fmt.Printf("INFO: %s.%s table descriptor %s\n", scheme, name, storeTd)
+	fmt.Printf("INFO: %s.%s table descriptor %s\n", source.scheme, source.name, storeTd)
 	cells := make([]Cell, 0)
 	buf := make([]byte, 1024) // buffer should be calculated based od schema row + delimeters etc
 
@@ -138,23 +152,28 @@ func readTableRow(scheme, name string) ([]Cell, error) {
 			break
 		}
 
-		for i, cd := range storeTd.columnDescriptors {
+		offset := 0
+		for _, cd := range storeTd.columnDescriptors {
 			switch cd.dataType {
 			case smallint:
 				{
 					size := getDataTypeByteSize(smallint)
 					cells = append(cells, Cell{
 						columnDescriptor: cd,
-						value:            buf[i*size : (i+1)*size],
+						value:            buf[offset : offset+size],
 					})
+
+					offset += size
 				}
 			case uniqueidentifier:
 				{
 					size := getDataTypeByteSize(uniqueidentifier)
 					cells = append(cells, Cell{
 						columnDescriptor: cd,
-						value:            buf[i*size : (i+1)*size],
+						value:            buf[offset : offset+size],
 					})
+
+					offset += size
 				}
 			default:
 				return []Cell{}, errors.New("unhandled type")
