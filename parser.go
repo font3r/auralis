@@ -23,7 +23,7 @@ func ParseTokens(tokens []TokenLiteral) (any, error) {
 		return Command{}, errors.New("missing keyword")
 	}
 
-	// for now assume that query starts with keyword
+	// TODO: detect which query type to analyze
 	switch tokens[0].value {
 	case "select":
 		return parseSelect(&tokens)

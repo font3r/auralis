@@ -8,10 +8,6 @@ import (
 	"github.com/google/uuid"
 )
 
-const (
-	schemeStore string = "scheme_store"
-)
-
 func main() {
 	args := os.Args
 	if len(args) == 1 {
@@ -21,7 +17,7 @@ func main() {
 	switch args[1] {
 	case "init":
 		{
-			createSchemaStore()
+			CreateSchemaStore()
 		}
 	case "create":
 		{
@@ -62,61 +58,39 @@ func main() {
 		}
 	default:
 		{
-			tokens := Analyze(args[1])
-			fmt.Printf("INFO: tokens %v\n", tokens)
-
-			query, err := ParseTokens(tokens)
+			cells, err := ExecuteQuery(args[1])
 			if err != nil {
 				panic(err)
 			}
 
-			switch query := query.(type) {
-			case SelectQuery:
-				{
-					fmt.Printf("INFO: parsed query %v\n", query)
-					cells, err := readTableRow(query.source, query.columns)
-					if err != nil {
-						panic(err)
-					}
-
-					fmt.Printf("INFO: query row result:\n\n %v \n", cells)
-					fmt.Printf("|")
-					for _, c := range cells {
-						switch c.columnDescriptor.dataType {
-						case smallint:
-							{
-								fmt.Printf("\t%d\t", binary.BigEndian.Uint16(c.value.([]byte)))
-							}
-						case uniqueidentifier:
-							{
-								fmt.Printf("\t%x\t", c.value)
-							}
-						default:
-							{
-								fmt.Printf("\t%s\t", c.value)
-							}
-						}
-
-						fmt.Printf("|")
-					}
-
-					fmt.Println()
-					fmt.Println()
-				}
-			default:
-				panic("unsupported query")
-			}
+			displayQueryResultSet(cells)
 		}
 	}
-
 }
 
-func createSchemaStore() error {
-	schemeF, err := os.OpenFile(fmt.Sprintf("./data/%s", schemeStore), os.O_CREATE, 0600)
-	if err != nil {
-		return err
-	}
-	defer schemeF.Close()
+func displayQueryResultSet(cells []Cell) {
+	fmt.Printf("INFO: query row result:\n\n %v \n", cells)
+	fmt.Printf("| ")
 
-	return nil
+	for i := range cells {
+		switch cells[i].columnDescriptor.dataType {
+		case smallint:
+			{
+				fmt.Printf("%d", binary.BigEndian.Uint16(cells[i].value.([]byte)))
+			}
+		case uniqueidentifier:
+			{
+				fmt.Printf("%x", cells[i].value)
+			}
+		default:
+			{
+				fmt.Printf("%s", cells[i].value)
+			}
+		}
+
+		fmt.Printf(" | ")
+	}
+
+	fmt.Println()
+	fmt.Println()
 }

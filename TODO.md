@@ -1,6 +1,7 @@
 ### TODO
 
-[ ] - querying specific fields
+[x] - querying specific fields
+    [ ] - handle any column order
 [ ] - basic data structures
     [ ] - varaible numeric types
 [ ] - DML, DDL,
@@ -8,4 +9,4 @@
 [ ] - indexing
 [ ] - TCL
 [ ] - expose server
-[ ] - lexer
+[x] - basic lexer
