@@ -34,7 +34,7 @@ type Cell struct {
 type DataType string
 
 var (
-	ErrTableNotFound = AuraError{Code: "0001", Message: "table not found"}
+	ErrTableNotFound = AuraError{Code: "TABLE_NOT_FOUND", Message: "table not found"}
 )
 
 const (
@@ -56,7 +56,7 @@ func cretateTable(td TableDescriptor) error {
 	}
 	defer schemeF.Close()
 
-	_, err = schemeF.WriteString(fmt.Sprintf("%s\n", getTableDescriptorAsString(td)))
+	_, err = schemeF.WriteString(fmt.Sprintf("%s\n", tableDescriptorAsString(td)))
 	if err != nil {
 		return err
 	}
@@ -137,11 +137,14 @@ func readTableRow(source SchemeTable[string, string], columns []string) ([]Cell,
 	}
 	defer f.Close()
 
-	storeTd, _ := getTableDescriptorFromStore(source.scheme, source.name)
+	tableDescriptor, err := getTableDescriptorFromStore(source)
+	if err != nil {
+		return []Cell{}, err
+	}
 
-	fmt.Printf("INFO: %s.%s table descriptor %s\n", source.scheme, source.name, storeTd)
+	fmt.Printf("INFO: %s.%s table descriptor %s\n", source.scheme, source.name, tableDescriptor)
 	cells := make([]Cell, 0)
-	buf := make([]byte, 1024) // buffer should be calculated based od schema row + delimeters etc
+	buf := make([]byte, 1024) // TODO: buffer should be calculated based od schema row + delimeters etc
 
 	for {
 		n, err := f.Read(buf)
@@ -154,7 +157,7 @@ func readTableRow(source SchemeTable[string, string], columns []string) ([]Cell,
 		}
 
 		offset := 0
-		for _, cd := range storeTd.columnDescriptors {
+		for _, cd := range tableDescriptor.columnDescriptors {
 			if !slices.Contains(columns, cd.name) {
 				offset += getDataTypeByteSize(cd.dataType)
 				continue
@@ -190,29 +193,69 @@ func readTableRow(source SchemeTable[string, string], columns []string) ([]Cell,
 	return cells, nil
 }
 
-func getTableDescriptorAsString(td TableDescriptor) string {
+func tableDescriptorAsString(td TableDescriptor) string {
 	b := strings.Builder{}
-	b.WriteString(fmt.Sprintf("%s.%s|", td.scheme, td.name))
+	b.WriteString(fmt.Sprintf("%s.%s", td.scheme, td.name))
 
 	for _, cd := range td.columnDescriptors {
-		b.WriteString(fmt.Sprintf("%s.%s|", cd.name, cd.dataType))
+		b.WriteString(fmt.Sprintf("|%s.%s", cd.name, cd.dataType))
 	}
 
 	return b.String()
 }
 
-func getTableDescriptorFromStore(scheme, name string) (TableDescriptor, error) {
-	// TODO: read table structure from store (maybe should be table as other)
+func getTableDescriptorFromStore(schemeTable SchemeTable[string, string]) (TableDescriptor, error) {
+	fileBytes, err := os.ReadFile(fmt.Sprintf("./data/%s", schemeStore))
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return TableDescriptor{}, ErrTableNotFound
+		}
+		return TableDescriptor{}, err
+	}
 
-	return TableDescriptor{
-		name:   name,
-		scheme: scheme,
-		columnDescriptors: []ColumnDescriptor{
-			{name: "id1", dataType: smallint},
-			{name: "id2", dataType: uniqueidentifier},
-			{name: "id3", dataType: smallint},
-		},
-	}, nil
+	tableDescriptors := make([]TableDescriptor, 0)
+	l := 0
+	td := TableDescriptor{}
+
+	for i := range fileBytes {
+		if fileBytes[i] == byte('|') {
+			parts := strings.Split(string(fileBytes[l:i]), ".")
+
+			if td.name == "" && td.scheme == "" {
+				td.scheme = parts[0]
+				td.name = parts[1]
+			} else {
+				td.columnDescriptors = append(td.columnDescriptors, ColumnDescriptor{
+					name:     parts[0],
+					dataType: DataType(parts[1]),
+				})
+			}
+
+			l = i + 1
+		}
+
+		if fileBytes[i] == byte(10) {
+			parts := strings.Split(string(fileBytes[l:i]), ".")
+			td.columnDescriptors = append(td.columnDescriptors, ColumnDescriptor{
+				name:     parts[0],
+				dataType: DataType(parts[1]),
+			})
+
+			tableDescriptors = append(tableDescriptors, td)
+		}
+	}
+
+	var exists TableDescriptor
+	for _, td := range tableDescriptors {
+		if td.name == schemeTable.name && td.scheme == schemeTable.scheme {
+			exists = td
+			return exists, nil
+		}
+	}
+
+	return TableDescriptor{}, AuraError{
+		Code:    "TABLE_DESCRIPTOR_NOT_FOUND",
+		Message: "table descriptor for given scheme name foes not exist"}
 }
 
 func getDataTypeByteSize(dataType DataType) int {
