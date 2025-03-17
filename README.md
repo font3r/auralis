@@ -1,0 +1,1 @@
+Simple relational database with pgql compatible sql dialect

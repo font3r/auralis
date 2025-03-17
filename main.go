@@ -60,18 +60,9 @@ func main() {
 				panic(err)
 			}
 		}
-	case "select":
-		{
-			cells, err := readTableRow(SchemeTable[string, string]{"dbo", "users"})
-			if err != nil {
-				panic(err)
-			}
-
-			fmt.Printf("INFO: query row result %v\n", cells)
-		}
 	default:
 		{
-			tokens := Analyze("select id1, id2, id3 from users")
+			tokens := Analyze(args[1])
 			fmt.Printf("INFO: tokens %v\n", tokens)
 
 			query, err := ParseTokens(tokens)
@@ -83,28 +74,33 @@ func main() {
 			case SelectQuery:
 				{
 					fmt.Printf("INFO: parsed query %v\n", query)
-					cells, err := readTableRow(query.source)
+					cells, err := readTableRow(query.source, query.columns)
 					if err != nil {
 						panic(err)
 					}
 
-					fmt.Printf("INFO: query row result:\n %v \n", cells)
+					fmt.Printf("INFO: query row result:\n\n %v \n", cells)
+					fmt.Printf("|")
 					for _, c := range cells {
 						switch c.columnDescriptor.dataType {
 						case smallint:
 							{
-								fmt.Printf("%d|", binary.BigEndian.Uint16(c.value.([]byte)))
+								fmt.Printf("\t%d\t", binary.BigEndian.Uint16(c.value.([]byte)))
 							}
 						case uniqueidentifier:
 							{
-								fmt.Printf("%x|", c.value)
+								fmt.Printf("\t%x\t", c.value)
 							}
 						default:
 							{
-								fmt.Printf("%s|", c.value)
+								fmt.Printf("\t%s\t", c.value)
 							}
 						}
+
+						fmt.Printf("|")
 					}
+
+					fmt.Println()
 					fmt.Println()
 				}
 			default:

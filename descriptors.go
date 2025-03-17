@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/google/uuid"
@@ -125,7 +126,7 @@ func writeIntoTable(scheme, name string, data ...Cell) error {
 	return nil
 }
 
-func readTableRow(source SchemeTable[string, string]) ([]Cell, error) {
+func readTableRow(source SchemeTable[string, string], columns []string) ([]Cell, error) {
 	f, err := os.Open(fmt.Sprintf("./data/%s.%s", source.scheme, source.name))
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -154,6 +155,11 @@ func readTableRow(source SchemeTable[string, string]) ([]Cell, error) {
 
 		offset := 0
 		for _, cd := range storeTd.columnDescriptors {
+			if !slices.Contains(columns, cd.name) {
+				offset += getDataTypeByteSize(cd.dataType)
+				continue
+			}
+
 			switch cd.dataType {
 			case smallint:
 				{
