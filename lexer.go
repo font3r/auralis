@@ -58,8 +58,11 @@ func Analyze(raw string) []TokenLiteral {
 			}
 		case byte(')'):
 			{
-				frag := strings.ToLower(string(raw[l:r]))
-				tokens = append(tokens, TokenLiteral{kind: symbol, value: frag})
+				if l != r {
+					frag := strings.ToLower(string(raw[l:r]))
+					tokens = append(tokens, TokenLiteral{kind: symbol, value: frag})
+				}
+
 				tokens = append(tokens, TokenLiteral{kind: closingroundbracket, value: string(')')})
 				l = r + 1
 			}
