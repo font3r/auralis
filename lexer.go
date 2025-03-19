@@ -68,13 +68,12 @@ func Analyze(raw string) []TokenLiteral {
 			}
 		case byte(','):
 			{
-				if raw[r-1] == byte(' ') {
-					tokens = append(tokens, TokenLiteral{kind: comma, value: string(',')})
-				} else {
+				if raw[r-1] != byte(' ') {
 					frag := strings.ToLower(string(raw[l:r]))
 					tokens = append(tokens, TokenLiteral{kind: symbol, value: frag})
-					tokens = append(tokens, TokenLiteral{kind: comma, value: string(',')})
 				}
+
+				tokens = append(tokens, TokenLiteral{kind: comma, value: string(',')})
 				l = r + 1
 			}
 		}
