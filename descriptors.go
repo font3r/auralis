@@ -47,7 +47,7 @@ const (
 )
 
 func cretateTable(td TableDescriptor) error {
-	schemeF, err := os.OpenFile(fmt.Sprintf("./data/%s", schemeStore), os.O_RDWR, 0600)
+	schemeF, err := os.OpenFile(fmt.Sprintf("./data/%s", schemaStore), os.O_RDWR, 0600)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return ErrTableNotFound
@@ -205,7 +205,7 @@ func tableDescriptorAsString(td TableDescriptor) string {
 }
 
 func getTableDescriptorFromStore(schemeTable SchemeTable[string, string]) (TableDescriptor, error) {
-	fileBytes, err := os.ReadFile(fmt.Sprintf("./data/%s", schemeStore))
+	fileBytes, err := os.ReadFile(fmt.Sprintf("./data/%s", schemaStore))
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return TableDescriptor{}, ErrTableNotFound

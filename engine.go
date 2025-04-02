@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	schemeStore string = "scheme_store"
+	schemaStore string = "schema_store"
 )
 
 func ExecuteQuery(raw string) ([]Cell, error) {
@@ -44,7 +44,7 @@ func ExecuteQuery(raw string) ([]Cell, error) {
 }
 
 func CreateSchemaStore() error {
-	schemeF, err := os.OpenFile(fmt.Sprintf("./data/%s", schemeStore), os.O_CREATE, 0600)
+	schemeF, err := os.OpenFile(fmt.Sprintf("./data/%s", schemaStore), os.O_CREATE, 0600)
 	if err != nil {
 		return err
 	}
