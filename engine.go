@@ -29,7 +29,15 @@ func ExecuteQuery(raw string) ([]Cell, error) {
 	switch query := query.(type) {
 	case SelectQuery:
 		{
-			cells, err := readTableRow(query.source, query.columns)
+			var cells []Cell
+			var err error
+
+			if len(query.columns) == 1 && query.columns[0] == "*" {
+				cells, err = readAllFromTable(query.source)
+			} else {
+				cells, err = readColumnsFromTable(query.source, query.columns)
+			}
+
 			if err != nil {
 				return []Cell{}, err
 			}

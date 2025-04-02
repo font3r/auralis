@@ -126,8 +126,31 @@ func writeIntoTable(scheme, name string, data ...Cell) error {
 	return nil
 }
 
-func readTableRow(source SchemeTable[string, string], columns []string) ([]Cell, error) {
-	f, err := os.Open(fmt.Sprintf("./data/%s.%s", source.scheme, source.name))
+func readAllFromTable(source SchemeTable[string, string]) ([]Cell, error) {
+	tableDescriptor, err := getTableDescriptor(source)
+	if err != nil {
+		return []Cell{}, err
+	}
+
+	columns := []string{}
+	for _, v := range tableDescriptor.columnDescriptors {
+		columns = append(columns, v.name)
+	}
+
+	return readFromTable(tableDescriptor, columns)
+}
+
+func readColumnsFromTable(source SchemeTable[string, string], columns []string) ([]Cell, error) {
+	tableDescriptor, err := getTableDescriptor(source)
+	if err != nil {
+		return []Cell{}, err
+	}
+
+	return readFromTable(tableDescriptor, columns)
+}
+
+func readFromTable(tableDescriptor TableDescriptor, columns []string) ([]Cell, error) {
+	f, err := os.Open(fmt.Sprintf("./data/%s.%s", tableDescriptor.scheme, tableDescriptor.name))
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return nil, ErrTableNotFound
@@ -137,12 +160,7 @@ func readTableRow(source SchemeTable[string, string], columns []string) ([]Cell,
 	}
 	defer f.Close()
 
-	tableDescriptor, err := getTableDescriptorFromStore(source)
-	if err != nil {
-		return []Cell{}, err
-	}
-
-	fmt.Printf("INFO: %s.%s table descriptor %s\n", source.scheme, source.name, tableDescriptor)
+	fmt.Printf("INFO: %s.%s table descriptor %+v\n", tableDescriptor.scheme, tableDescriptor.name, tableDescriptor)
 	cells := make([]Cell, 0)
 	buf := make([]byte, 1024) // TODO: buffer should be calculated based od schema row + delimeters etc
 
@@ -204,7 +222,7 @@ func tableDescriptorAsString(td TableDescriptor) string {
 	return b.String()
 }
 
-func getTableDescriptorFromStore(schemeTable SchemeTable[string, string]) (TableDescriptor, error) {
+func getTableDescriptor(schemeTable SchemeTable[string, string]) (TableDescriptor, error) {
 	fileBytes, err := os.ReadFile(fmt.Sprintf("./data/%s", schemaStore))
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
