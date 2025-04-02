@@ -38,7 +38,7 @@ var (
 )
 
 const (
-	smallint         DataType = "smallint" // 2
+	smallint         DataType = "smallint" // 2B
 	integer          DataType = "integer"  // 4
 	bigint           DataType = "bigint"   // 8
 	varchar          DataType = "varchar"
@@ -88,7 +88,8 @@ func writeIntoTable(scheme, name string, data ...Cell) error {
 		case smallint:
 			{
 				buf := bytes.NewBuffer(make([]byte, 0, getDataTypeByteSize(smallint)))
-				err := binary.Write(buf, binary.BigEndian, int16(v.value.(int)))
+				// binary writer is implicitly converting to uint16 with two's complement
+				err := binary.Write(buf, binary.BigEndian, uint16(v.value.(int)))
 				if err != nil {
 					return err
 				}
