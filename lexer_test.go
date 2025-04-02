@@ -137,6 +137,7 @@ func TestInsertStatementLexer(t *testing.T) {
 			expected: []TokenLiteral{
 				{kind: keyword, value: "insert"},
 				{kind: keyword, value: "into"},
+				{kind: symbol, value: "test"},
 				{kind: symbol, value: "users"},
 				{kind: keyword, value: "values"},
 				{kind: openingroundbracket, value: "("},

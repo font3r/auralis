@@ -7,6 +7,8 @@ import (
 
 type TokenKind int
 
+// TODO: add support for passing custom scheme eg. test.users instead of dbo.users
+
 const (
 	keyword TokenKind = iota
 	symbol
