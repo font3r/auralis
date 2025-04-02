@@ -7,14 +7,20 @@ import (
 
 type Command struct{}
 
+type SchemeTable[T, U string] struct {
+	scheme T
+	name   U
+}
+
 type SelectQuery struct {
 	source  SchemeTable[string, string]
 	columns []string
 }
 
-type SchemeTable[T, U string] struct {
-	scheme T
-	name   U
+type InsertQuery struct {
+	destination SchemeTable[string, string]
+	columns     []string   // column names
+	values      [][]string // column values
 }
 
 func ParseTokens(tokens []TokenLiteral) (any, error) {
@@ -27,6 +33,8 @@ func ParseTokens(tokens []TokenLiteral) (any, error) {
 	switch tokens[0].value {
 	case "select":
 		return parseSelect(&tokens)
+	case "insert":
+		return parseInsert(&tokens)
 	}
 
 	return Command{}, errors.New("missing keyword")
@@ -91,6 +99,91 @@ func parseSelect(tokens *[]TokenLiteral) (SelectQuery, error) {
 		q.source = SchemeTable[string, string]{"dbo", s[0]}
 	} else {
 		q.source = SchemeTable[string, string]{s[0], s[1]}
+	}
+
+	return q, nil
+}
+
+func parseInsert(tokens *[]TokenLiteral) (InsertQuery, error) {
+	v := *tokens
+	q := InsertQuery{}
+	i := 0
+
+	// insert
+	if i >= len(v) || v[i].kind != keyword || v[i].value != "insert" {
+		return InsertQuery{}, errors.New("missing insert keyword")
+	}
+	i++
+
+	// into
+	if i >= len(v) || v[i].kind != keyword || v[i].value != "into" {
+		return InsertQuery{}, errors.New("missing into keyword")
+	}
+	i++
+
+	// destination table
+	if i >= len(v) || v[i].kind != symbol {
+		return InsertQuery{}, errors.New("missing destination table")
+	} else {
+		s := strings.Split(v[i].value, ".")
+		if len(s) == 1 {
+			q.destination = SchemeTable[string, string]{"dbo", s[0]}
+		} else {
+			q.destination = SchemeTable[string, string]{s[0], s[1]}
+		}
+	}
+	i++
+
+	// TODO: implement better algorithm for data sets and columns specification, eg. parenthesis stack
+	// values or csv columns
+	if i >= len(v) || (v[i].kind == keyword && v[i].value != "values") {
+		return InsertQuery{}, errors.New("missing values keyword")
+	} else if v[i].kind == openingroundbracket {
+		// csv columns or skip
+		for ; i < len(v); i++ {
+			if v[i].kind == comma || v[i].kind == openingroundbracket {
+				continue
+			}
+
+			if v[i].kind != symbol {
+				if v[i].kind == closingroundbracket {
+					i++
+				}
+				break
+			}
+
+			q.columns = append(q.columns, v[i].value)
+		}
+
+		if len(q.columns) == 0 {
+			return InsertQuery{}, errors.New("invalid columns specification")
+		}
+		// i is incremented by loop
+
+		// values after csv
+		if i >= len(v) || v[i].kind != keyword && v[i].value != "values" {
+			return InsertQuery{}, errors.New("missing values keyword")
+		}
+		i++
+	}
+
+	// column values
+	dataSet := 0
+	for ; i < len(v); i++ {
+		if v[i].kind == comma || v[i].kind == openingroundbracket {
+			continue
+		}
+
+		// TODO: after closing bracket we should handle next data set
+		if v[i].kind != symbol || v[i].kind == closingroundbracket {
+			break
+		}
+
+		if len(q.values)-1 < dataSet {
+			q.values = append(q.values, []string{})
+		}
+
+		q.values[dataSet] = append(q.values[dataSet], v[i].value)
 	}
 
 	return q, nil

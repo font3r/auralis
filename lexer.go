@@ -7,6 +7,8 @@ import (
 
 type TokenKind int
 
+// TODO: add support for passing custom scheme eg. test.users instead of dbo.users
+
 const (
 	keyword TokenKind = iota
 	symbol
@@ -58,20 +60,22 @@ func Analyze(raw string) []TokenLiteral {
 			}
 		case byte(')'):
 			{
-				frag := strings.ToLower(string(raw[l:r]))
-				tokens = append(tokens, TokenLiteral{kind: symbol, value: frag})
+				if l != r {
+					frag := strings.ToLower(string(raw[l:r]))
+					tokens = append(tokens, TokenLiteral{kind: symbol, value: frag})
+				}
+
 				tokens = append(tokens, TokenLiteral{kind: closingroundbracket, value: string(')')})
 				l = r + 1
 			}
 		case byte(','):
 			{
-				if raw[r-1] == byte(' ') {
-					tokens = append(tokens, TokenLiteral{kind: comma, value: string(',')})
-				} else {
+				if raw[r-1] != byte(' ') && r != l {
 					frag := strings.ToLower(string(raw[l:r]))
 					tokens = append(tokens, TokenLiteral{kind: symbol, value: frag})
-					tokens = append(tokens, TokenLiteral{kind: comma, value: string(',')})
 				}
+
+				tokens = append(tokens, TokenLiteral{kind: comma, value: string(',')})
 				l = r + 1
 			}
 		}
