@@ -58,6 +58,7 @@ func cretateTable(td TableDescriptor) error {
 	return nil
 }
 
+// TODO: dataSet validation against table descriptor
 func writeIntoTable(source SchemeTable[string, string], dataSet DataSet) error {
 	f, err := os.OpenFile(fmt.Sprintf("./data/%s.%s", source.scheme, source.name), os.O_WRONLY|os.O_APPEND, 0600)
 	if err != nil {
@@ -101,11 +102,11 @@ func writeIntoTable(source SchemeTable[string, string], dataSet DataSet) error {
 				return err
 			}
 		}
-	}
 
-	err = w.WriteByte(terminationByte)
-	if err != nil {
-		return err
+		err = w.WriteByte(terminationByte)
+		if err != nil {
+			return err
+		}
 	}
 
 	err = w.Flush()
@@ -155,9 +156,12 @@ func readFromTable(tableDescriptor TableDescriptor, selectedColumns []string) (*
 	dataSet := DataSet{}
 	dataSet.columnDescriptors = tableDescriptor.columnDescriptors
 
-	rowBuf := make([]byte, calculateRowBuffer(tableDescriptor))
+	var fileOffset int64 = 0
+	rowBuffSize := calculateRowBuffer(tableDescriptor)
+	rowBuf := make([]byte, rowBuffSize)
+
 	for {
-		n, err := f.Read(rowBuf)
+		n, err := f.ReadAt(rowBuf, fileOffset)
 		if err != nil && err != io.EOF {
 			panic(err)
 		}
@@ -167,38 +171,47 @@ func readFromTable(tableDescriptor TableDescriptor, selectedColumns []string) (*
 		}
 
 		row := Row{}
-		offset := 0
+		rowOffset := 0
+
+		var cellDataSize int
 		for _, cd := range tableDescriptor.columnDescriptors {
 			if !slices.Contains(selectedColumns, cd.name) {
-				offset += getDataTypeByteSize(cd.dataType)
+				rowOffset += getDataTypeByteSize(cd.dataType)
 				continue
 			}
 
 			switch cd.dataType {
 			case smallint:
 				{
-					size := getDataTypeByteSize(smallint)
-					row.cells = append(row.cells, Cell{
-						value: rowBuf[offset : offset+size],
-					})
+					cellDataSize = getDataTypeByteSize(smallint)
+					data := make([]byte, cellDataSize)
+					copy(data, rowBuf[rowOffset:rowOffset+cellDataSize])
 
-					offset += size
+					row.cells = append(row.cells, Cell{
+						value: data,
+					})
 				}
 			case uniqueidentifier:
 				{
-					size := getDataTypeByteSize(uniqueidentifier)
+					cellDataSize = getDataTypeByteSize(uniqueidentifier)
+					data := make([]byte, cellDataSize)
+					copy(data, rowBuf[rowOffset:rowOffset+cellDataSize])
+
 					row.cells = append(row.cells, Cell{
-						value: rowBuf[offset : offset+size],
+						value: data,
 					})
 
-					offset += size
 				}
 			default:
 				return &dataSet, errors.New("unhandled type")
 			}
+
+			rowOffset += cellDataSize
 		}
 
 		dataSet.rows = append(dataSet.rows, row)
+		fileOffset += int64(rowBuffSize)
+		clear(rowBuf)
 	}
 
 	return &dataSet, nil
@@ -208,8 +221,8 @@ func calculateRowBuffer(td TableDescriptor) int {
 	size := 0
 	for _, v := range td.columnDescriptors {
 		size += getDataTypeByteSize(v.dataType)
-		size += 1 // termination byte
 	}
+	size += 1 // termination byte
 
 	return size
 }

@@ -51,7 +51,8 @@ func main() {
 		}
 	case "insert":
 		{
-			u, _ := uuid.Parse("92bd41cc-62b5-41c9-b542-f9737941407a")
+			u1, _ := uuid.Parse("92bd41cc-62b5-41c9-b542-f9737941407a")
+			u2, _ := uuid.Parse("37eae8fd-c2e6-48dc-b33f-d6bc5c9e1425")
 
 			dataSet := DataSet{
 				columnDescriptors: []ColumnDescriptor{
@@ -62,9 +63,10 @@ func main() {
 				},
 				rows: []Row{
 					{
-						[]Cell{
-							{math.MinInt16}, {math.MaxInt16}, {u}, {100},
-						},
+						[]Cell{{math.MinInt16}, {math.MaxInt16}, {u1}, {100}},
+					},
+					{
+						[]Cell{{math.MinInt16}, {math.MaxInt16}, {u2}, {200}},
 					},
 				},
 			}
@@ -88,9 +90,9 @@ func main() {
 
 func displayQueryResultSet(dataSet *DataSet) {
 	fmt.Printf("INFO: query row result:\n\n%v\n", dataSet)
-	fmt.Printf("| ")
 
 	for _, row := range dataSet.rows {
+		fmt.Printf("| ")
 		for cellIndex, cell := range row.cells {
 			switch dataSet.columnDescriptors[cellIndex].dataType {
 			case smallint:
