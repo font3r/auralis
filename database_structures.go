@@ -8,10 +8,13 @@ import (
 )
 
 const (
-	tables string = "aura_tables"
+	internalSchema string = "auralis"
+	tables         string = "aura_tables"
+	columns        string = "aura_columns"
 
-	internalDirPath string = "./data/internal"
-	schemeInfoFile  string = internalDirPath + "/" + tables
+	internalDirPath   string = "./data"
+	tableSchemeFile   string = internalDirPath + "/" + tables
+	columnsSchemeFile string = internalDirPath + "/" + columns
 )
 
 var (
@@ -26,7 +29,7 @@ type TableDescriptor struct {
 type ColumnDescriptor struct {
 	name     string
 	dataType DataType
-	// position int // columnd order
+	position int
 	// attributes eg. PK
 }
 
@@ -40,10 +43,73 @@ func initDatabaseInternalStructure() {
 	if err != nil {
 		panic(err)
 	}
+
+	schemeF, err := os.Create("data/auralis.aura_tables")
+	if err != nil {
+		panic(err)
+	}
+	defer schemeF.Close()
+
+	schemeF, err = os.Create("data/auralis.aura_columns")
+	if err != nil {
+		panic(err)
+	}
+	defer schemeF.Close()
+}
+
+func getAuralisTables() (*DataSet, error) {
+	return readFromTable(TableDescriptor{
+		source: SchemeTable[string, string]{"auralis", tables},
+		columnDescriptors: []ColumnDescriptor{
+			{
+				name:     "database_name",
+				dataType: varchar,
+				position: 1,
+			},
+			{
+				name:     "table_schema",
+				dataType: varchar,
+				position: 2,
+			},
+			{
+				name:     "table_name",
+				dataType: varchar,
+				position: 3,
+			},
+		},
+	}, []string{"database_name", "table_schema", "table_name"})
+}
+
+func getAuralisColumns() (*DataSet, error) {
+	return readFromTable(TableDescriptor{
+		source: SchemeTable[string, string]{"auralis", columns},
+		columnDescriptors: []ColumnDescriptor{
+			{
+				name:     "table_schema",
+				dataType: varchar,
+			},
+			{
+				name:     "table_name",
+				dataType: varchar,
+			},
+			{
+				name:     "column_name",
+				dataType: varchar,
+			},
+			{
+				name:     "data_type",
+				dataType: varchar,
+			},
+			{
+				name:     "position",
+				dataType: smallint,
+			},
+		},
+	}, []string{"table_schema", "table_name", "column_name", "data_type", "position"})
 }
 
 func createInformationSchemaTable() error {
-	schemeF, err := os.Create(schemeInfoFile)
+	schemeF, err := os.Create(tableSchemeFile)
 	if err != nil {
 		return err
 	}
@@ -53,7 +119,7 @@ func createInformationSchemaTable() error {
 }
 
 func getTableDescriptor(source SchemeTable[string, string]) (TableDescriptor, error) {
-	fileBytes, err := os.ReadFile(schemeInfoFile)
+	fileBytes, err := os.ReadFile(tableSchemeFile)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return TableDescriptor{}, ErrTableNotFound
@@ -103,7 +169,7 @@ func getTableDescriptor(source SchemeTable[string, string]) (TableDescriptor, er
 }
 
 func addTableDescriptor(tableDescriptor TableDescriptor) error {
-	schemeFile, err := os.OpenFile(schemeInfoFile, os.O_RDWR, 0600)
+	schemeFile, err := os.OpenFile(tableSchemeFile, os.O_RDWR, 0600)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return ErrTableNotFound
@@ -125,6 +191,66 @@ func addTableDescriptor(tableDescriptor TableDescriptor) error {
 	if err != nil {
 		return err
 	}
+
+	writeIntoTable(SchemeTable[string, string]{internalSchema, tables}, DataSet{
+		columnDescriptors: []ColumnDescriptor{
+			{
+				name:     "database_name",
+				dataType: varchar,
+				position: 1,
+			},
+			{
+				name:     "table_schema",
+				dataType: varchar,
+				position: 2,
+			},
+			{
+				name:     "table_name",
+				dataType: varchar,
+				position: 3,
+			},
+		},
+		rows: []Row{
+			{
+				cells: []Cell{{"test-database"}, {tableDescriptor.source.scheme}, {tableDescriptor.source.name}},
+			},
+		},
+	})
+
+	rows := []Row{}
+	for _, cd := range tableDescriptor.columnDescriptors {
+		rows = append(rows, Row{
+			cells: []Cell{
+				{tableDescriptor.source.scheme}, {tableDescriptor.source.name}, {cd.name}, {string(cd.dataType)}, {cd.position},
+			},
+		})
+	}
+
+	writeIntoTable(SchemeTable[string, string]{internalSchema, columns}, DataSet{
+		columnDescriptors: []ColumnDescriptor{
+			{
+				name:     "table_schema",
+				dataType: varchar,
+			},
+			{
+				name:     "table_name",
+				dataType: varchar,
+			},
+			{
+				name:     "column_name",
+				dataType: varchar,
+			},
+			{
+				name:     "data_type",
+				dataType: varchar,
+			},
+			{
+				name:     "position",
+				dataType: smallint,
+			},
+		},
+		rows: rows,
+	})
 
 	return nil
 }

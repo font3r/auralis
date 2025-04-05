@@ -22,6 +22,26 @@ func main() {
 		{
 			initDatabaseInternalStructure()
 		}
+	case "tables":
+		{
+			dataSet, err := getAuralisTables()
+			if err != nil {
+				panic(err)
+			}
+
+			fmt.Println()
+			displayDataSet(dataSet)
+		}
+	case "columns":
+		{
+			dataSet, err := getAuralisColumns()
+			if err != nil {
+				panic(err)
+			}
+
+			fmt.Println()
+			displayDataSet(dataSet)
+		}
 	case "create":
 		{
 			err := cretateTable(TableDescriptor{
@@ -30,22 +50,27 @@ func main() {
 					{
 						name:     "id1",
 						dataType: smallint,
+						position: 1,
 					},
 					{
 						name:     "id2",
 						dataType: smallint,
+						position: 2,
 					},
 					{
 						name:     "name",
 						dataType: varchar,
+						position: 3,
 					},
 					{
 						name:     "id3",
 						dataType: uniqueidentifier,
+						position: 4,
 					},
 					{
 						name:     "id4",
 						dataType: smallint,
+						position: 5,
 					},
 				},
 			})
@@ -84,13 +109,13 @@ func main() {
 		}
 	default:
 		{
-			datSet, err := ExecuteQuery(args[1])
+			dataSet, err := ExecuteQuery(args[1])
 			if err != nil {
 				panic(err)
 			}
 
 			fmt.Println()
-			displayDataSet(datSet)
+			displayDataSet(dataSet)
 		}
 	}
 }
