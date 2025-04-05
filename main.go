@@ -7,6 +7,8 @@ import (
 	"os"
 
 	"github.com/google/uuid"
+	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jedib0t/go-pretty/v6/text"
 )
 
 func main() {
@@ -77,41 +79,49 @@ func main() {
 		}
 	default:
 		{
-			cells, err := ExecuteQuery(args[1])
+			datSet, err := ExecuteQuery(args[1])
 			if err != nil {
 				panic(err)
 			}
 
-			displayQueryResultSet(cells)
+			fmt.Println()
+			displayDataSet(datSet)
 		}
 	}
 }
 
-func displayQueryResultSet(dataSet *DataSet) {
-	fmt.Printf("INFO: query row result:\n\n%v\n", dataSet)
+func displayDataSet(dataSet *DataSet) {
+	t := table.NewWriter()
+	t.SetOutputMirror(os.Stdout)
+	t.SetAutoIndex(true)
 
-	for _, row := range dataSet.rows {
-		fmt.Printf("| ")
-		for cellIndex, cell := range row.cells {
-			switch dataSet.columnDescriptors[cellIndex].dataType {
+	style := table.StyleDefault
+	style.Format.Header = text.FormatDefault
+	t.SetStyle(style)
+
+	tableHeader := table.Row{}
+	for _, cd := range dataSet.columnDescriptors {
+		tableHeader = append(tableHeader, cd.name)
+	}
+	t.AppendHeader(tableHeader)
+
+	for _, dataRow := range dataSet.rows {
+		tableRow := table.Row{}
+		var formattedCell string
+		for i, dataCell := range dataRow.cells {
+			switch dataSet.columnDescriptors[i].dataType {
 			case smallint:
-				{
-					fmt.Printf("%d", int16(binary.BigEndian.Uint16(cell.value.([]byte))))
-				}
+				formattedCell = fmt.Sprintf("%d", int16(binary.BigEndian.Uint16(dataCell.value.([]byte))))
 			case uniqueidentifier:
-				{
-					fmt.Printf("%x", cell.value)
-				}
+				formattedCell = fmt.Sprintf("%x", dataCell.value)
 			default:
-				{
-					fmt.Printf("%s", cell.value)
-				}
+				formattedCell = fmt.Sprintf("%s", dataCell.value)
 			}
-			fmt.Printf(" | ")
+
+			tableRow = append(tableRow, formattedCell)
 		}
-		fmt.Println()
+		t.AppendRow(tableRow)
 	}
 
-	fmt.Println()
-	fmt.Println()
+	t.Render()
 }
