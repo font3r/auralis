@@ -29,7 +29,12 @@ type ColumnDescriptor struct {
 }
 
 func initDatabaseInternalStructure() {
-	err := createInformationSchemaTable()
+	err := os.MkdirAll("./data/internal", os.ModePerm) // TODO: verify perm bits
+	if err != nil {
+		panic(err)
+	}
+
+	err = createInformationSchemaTable()
 	if err != nil {
 		panic(err)
 	}
