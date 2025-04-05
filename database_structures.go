@@ -9,6 +9,9 @@ import (
 
 const (
 	tables string = "aura_tables"
+
+	internalDirPath string = "./data/internal"
+	schemeInfoFile  string = internalDirPath + "/" + tables
 )
 
 var (
@@ -16,8 +19,7 @@ var (
 )
 
 type TableDescriptor struct {
-	name              string
-	scheme            string             // eg. dbo
+	source            SchemeTable[string, string]
 	columnDescriptors []ColumnDescriptor // describes table schema
 }
 
@@ -29,7 +31,7 @@ type ColumnDescriptor struct {
 }
 
 func initDatabaseInternalStructure() {
-	err := os.MkdirAll("./data/internal", os.ModePerm) // TODO: verify perm bits
+	err := os.MkdirAll(internalDirPath, os.ModePerm) // TODO: verify perm bits
 	if err != nil {
 		panic(err)
 	}
@@ -41,7 +43,7 @@ func initDatabaseInternalStructure() {
 }
 
 func createInformationSchemaTable() error {
-	schemeF, err := os.Create(fmt.Sprintf("./data/internal/%s", tables))
+	schemeF, err := os.Create(schemeInfoFile)
 	if err != nil {
 		return err
 	}
@@ -51,7 +53,7 @@ func createInformationSchemaTable() error {
 }
 
 func getTableDescriptor(source SchemeTable[string, string]) (TableDescriptor, error) {
-	fileBytes, err := os.ReadFile(fmt.Sprintf("./data/internal/%s", tables))
+	fileBytes, err := os.ReadFile(schemeInfoFile)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return TableDescriptor{}, ErrTableNotFound
@@ -66,10 +68,8 @@ func getTableDescriptor(source SchemeTable[string, string]) (TableDescriptor, er
 	for i := range fileBytes {
 		if fileBytes[i] == byte('|') {
 			parts := strings.Split(string(fileBytes[l:i]), ".")
-
-			if td.name == "" && td.scheme == "" {
-				td.scheme = parts[0]
-				td.name = parts[1]
+			if td.source.name == "" && td.source.scheme == "" {
+				td.source = SchemeTable[string, string]{parts[0], parts[1]}
 			} else {
 				td.columnDescriptors = append(td.columnDescriptors, ColumnDescriptor{
 					name:     parts[0],
@@ -93,7 +93,7 @@ func getTableDescriptor(source SchemeTable[string, string]) (TableDescriptor, er
 
 	var exists TableDescriptor
 	for _, td := range tableDescriptors {
-		if td.name == source.name && td.scheme == source.scheme {
+		if td.source.name == source.name && td.source.scheme == source.scheme {
 			exists = td
 			return exists, nil
 		}
@@ -103,7 +103,7 @@ func getTableDescriptor(source SchemeTable[string, string]) (TableDescriptor, er
 }
 
 func addTableDescriptor(tableDescriptor TableDescriptor) error {
-	schemeFile, err := os.OpenFile(fmt.Sprintf("./data/internal/%s", tables), os.O_RDWR, 0600)
+	schemeFile, err := os.OpenFile(schemeInfoFile, os.O_RDWR, 0600)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return ErrTableNotFound
@@ -113,7 +113,7 @@ func addTableDescriptor(tableDescriptor TableDescriptor) error {
 	defer schemeFile.Close()
 
 	b := strings.Builder{}
-	b.WriteString(fmt.Sprintf("%s.%s", tableDescriptor.scheme, tableDescriptor.name))
+	b.WriteString(fmt.Sprintf("%s.%s", tableDescriptor.source.scheme, tableDescriptor.source.name))
 
 	for _, cd := range tableDescriptor.columnDescriptors {
 		b.WriteString(fmt.Sprintf("|%s.%s", cd.name, cd.dataType))

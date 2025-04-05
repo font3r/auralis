@@ -23,8 +23,7 @@ func main() {
 	case "create":
 		{
 			err := cretateTable(TableDescriptor{
-				name:   "users",
-				scheme: "dbo",
+				source: SchemeTable[string, string]{"dbo", "users"},
 				columnDescriptors: []ColumnDescriptor{
 					{
 						name:     "id1",

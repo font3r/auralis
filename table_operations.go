@@ -49,7 +49,7 @@ func cretateTable(td TableDescriptor) error {
 		return err
 	}
 
-	f, err := os.Create(fmt.Sprintf("./data/%s.%s", td.scheme, td.name))
+	f, err := os.Create(getTableDiskPath(td.source))
 	if err != nil {
 		return err
 	}
@@ -60,7 +60,7 @@ func cretateTable(td TableDescriptor) error {
 
 // TODO: dataSet validation against table descriptor
 func writeIntoTable(source SchemeTable[string, string], dataSet DataSet) error {
-	f, err := os.OpenFile(fmt.Sprintf("./data/%s.%s", source.scheme, source.name), os.O_WRONLY|os.O_APPEND, 0600)
+	f, err := os.OpenFile(getTableDiskPath(source), os.O_WRONLY|os.O_APPEND, 0600)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return ErrTableNotFound
@@ -141,7 +141,7 @@ func readColumnsFromTable(source SchemeTable[string, string], columns []string) 
 }
 
 func readFromTable(tableDescriptor TableDescriptor, selectedColumns []string) (*DataSet, error) {
-	f, err := os.Open(fmt.Sprintf("./data/%s.%s", tableDescriptor.scheme, tableDescriptor.name))
+	f, err := os.Open(getTableDiskPath(tableDescriptor.source))
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return nil, ErrTableNotFound
@@ -151,7 +151,8 @@ func readFromTable(tableDescriptor TableDescriptor, selectedColumns []string) (*
 	}
 	defer f.Close()
 
-	fmt.Printf("INFO: %s.%s table descriptor %+v\n", tableDescriptor.scheme, tableDescriptor.name, tableDescriptor)
+	fmt.Printf("INFO: %s.%s table descriptor %+v\n", tableDescriptor.source.scheme,
+		tableDescriptor.source.name, tableDescriptor)
 
 	dataSet := DataSet{}
 	dataSet.columnDescriptors = tableDescriptor.columnDescriptors
@@ -225,6 +226,10 @@ func calculateRowBuffer(td TableDescriptor) int {
 	size += 1 // termination byte
 
 	return size
+}
+
+func getTableDiskPath(source SchemeTable[string, string]) string {
+	return fmt.Sprintf("./data/%s.%s", source.scheme, source.name)
 }
 
 func getDataTypeByteSize(dataType DataType) int {
