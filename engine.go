@@ -2,17 +2,12 @@ package main
 
 import (
 	"fmt"
-	"os"
 )
 
-const (
-	schemaStore string = "schema_store"
-)
-
-func ExecuteQuery(raw string) ([]Cell, error) {
+func ExecuteQuery(raw string) (*DataSet, error) {
 	tokens := Analyze(raw)
 	if len(tokens) <= 0 {
-		return []Cell{}, AuraError{
+		return &DataSet{}, AuraError{
 			Code:    "INVALID_QUERY",
 			Message: "missing query tokens"}
 	}
@@ -21,7 +16,7 @@ func ExecuteQuery(raw string) ([]Cell, error) {
 
 	query, err := ParseTokens(tokens)
 	if err != nil {
-		return []Cell{}, err
+		return &DataSet{}, err
 	}
 
 	fmt.Printf("INFO: parsed query %v\n", query)
@@ -29,34 +24,24 @@ func ExecuteQuery(raw string) ([]Cell, error) {
 	switch query := query.(type) {
 	case SelectQuery:
 		{
-			var cells []Cell
+			var dataSet *DataSet
 			var err error
 
 			if len(query.columns) == 1 && query.columns[0] == "*" {
-				cells, err = readAllFromTable(query.source)
+				dataSet, err = readAllFromTable(query.source)
 			} else {
-				cells, err = readColumnsFromTable(query.source, query.columns)
+				dataSet, err = readColumnsFromTable(query.source, query.columns)
 			}
 
 			if err != nil {
-				return []Cell{}, err
+				return &DataSet{}, err
 			}
 
-			return cells, nil
+			return dataSet, nil
 		}
 	default:
 		{
 			panic("unsupported query")
 		}
 	}
-}
-
-func CreateSchemaStore() error {
-	schemeF, err := os.OpenFile(fmt.Sprintf("./data/%s", schemaStore), os.O_CREATE, 0600)
-	if err != nil {
-		return err
-	}
-	defer schemeF.Close()
-
-	return nil
 }
