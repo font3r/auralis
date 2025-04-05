@@ -86,6 +86,13 @@ func writeIntoTable(source SchemeTable[string, string], dataSet DataSet) error {
 
 					val = buf.Bytes()
 				}
+			case varchar:
+				{
+					// we don't care about endianness because we support only utf-8 for now
+					padded := make([]byte, getDataTypeByteSize(varchar))
+					copy(padded, cell.value.(string))
+					val = padded
+				}
 			case uniqueidentifier:
 				{
 					val, err = cell.value.(uuid.UUID).MarshalBinary()
@@ -192,6 +199,16 @@ func readFromTable(tableDescriptor TableDescriptor, selectedColumns []string) (*
 						value: data,
 					})
 				}
+			case varchar:
+				{
+					cellDataSize = getDataTypeByteSize(varchar)
+					data := make([]byte, cellDataSize)
+					copy(data, rowBuf[rowOffset:rowOffset+cellDataSize])
+
+					row.cells = append(row.cells, Cell{
+						value: data,
+					})
+				}
 			case uniqueidentifier:
 				{
 					cellDataSize = getDataTypeByteSize(uniqueidentifier)
@@ -241,7 +258,7 @@ func getDataTypeByteSize(dataType DataType) int {
 	case bigint:
 		return 8 // int64
 	case varchar:
-		return 8 // TODO: this should be configurable
+		return 16 // TODO: this should be configurable
 	case uniqueidentifier:
 		return 16
 	case boolean:

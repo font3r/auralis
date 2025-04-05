@@ -36,6 +36,10 @@ func main() {
 						dataType: smallint,
 					},
 					{
+						name:     "name",
+						dataType: varchar,
+					},
+					{
 						name:     "id3",
 						dataType: uniqueidentifier,
 					},
@@ -59,15 +63,16 @@ func main() {
 				columnDescriptors: []ColumnDescriptor{
 					{name: "id1", dataType: smallint},
 					{name: "id2", dataType: smallint},
+					{name: "name", dataType: varchar},
 					{name: "id3", dataType: uniqueidentifier},
 					{name: "id4", dataType: smallint},
 				},
 				rows: []Row{
 					{
-						[]Cell{{math.MinInt16}, {math.MaxInt16}, {u1}, {100}},
+						[]Cell{{math.MinInt16}, {math.MaxInt16}, {"test-111"}, {u1}, {100}},
 					},
 					{
-						[]Cell{{math.MinInt16}, {math.MaxInt16}, {u2}, {200}},
+						[]Cell{{math.MinInt16}, {math.MaxInt16}, {"test-2"}, {u2}, {200}},
 					},
 				},
 			}
