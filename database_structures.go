@@ -5,9 +5,14 @@ import (
 )
 
 const (
+	dataPath string = "./data"
+
 	internalSchema string = "auralis"
 	tables         string = "aura_tables"
 	columns        string = "aura_columns"
+
+	tablesPath  string = dataPath + "/" + internalSchema + "." + tables
+	columnsPath string = dataPath + "/" + internalSchema + "." + columns
 )
 
 var (
@@ -74,18 +79,18 @@ var auralisColumnsTableDescriptor = TableDescriptor{
 }
 
 func initDatabaseInternalStructure() {
-	err := os.Mkdir("data", os.ModePerm)
+	err := os.Mkdir(dataPath, os.ModePerm)
 	if err != nil {
 		panic(err)
 	}
 
-	schemeF, err := os.Create("data/auralis.aura_tables") // TODO: magic strings
+	schemeF, err := os.Create(tables)
 	if err != nil {
 		panic(err)
 	}
 	defer schemeF.Close()
 
-	schemeF, err = os.Create("data/auralis.aura_columns")
+	schemeF, err = os.Create(columnsPath)
 	if err != nil {
 		panic(err)
 	}
