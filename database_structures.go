@@ -1,17 +1,13 @@
 package main
 
 import (
-	"errors"
-	"fmt"
 	"os"
-	"strings"
 )
 
 const (
-	tables string = "aura_tables"
-
-	internalDirPath string = "./data/internal"
-	schemeInfoFile  string = internalDirPath + "/" + tables
+	internalSchema string = "auralis"
+	tables         string = "aura_tables"
+	columns        string = "aura_columns"
 )
 
 var (
@@ -26,105 +22,143 @@ type TableDescriptor struct {
 type ColumnDescriptor struct {
 	name     string
 	dataType DataType
-	// position int // columnd order
+	position int
 	// attributes eg. PK
 }
 
-func initDatabaseInternalStructure() {
-	err := os.MkdirAll(internalDirPath, os.ModePerm) // TODO: verify perm bits
-	if err != nil {
-		panic(err)
-	}
-
-	err = createInformationSchemaTable()
-	if err != nil {
-		panic(err)
-	}
+var auralisTablesTableDescriptor = TableDescriptor{
+	source: SchemeTable[string, string]{internalSchema, tables},
+	columnDescriptors: []ColumnDescriptor{
+		{
+			name:     "database_name",
+			dataType: varchar,
+			position: 1,
+		},
+		{
+			name:     "table_schema",
+			dataType: varchar,
+			position: 2,
+		},
+		{
+			name:     "table_name",
+			dataType: varchar,
+			position: 3,
+		},
+	},
 }
 
-func createInformationSchemaTable() error {
-	schemeF, err := os.Create(schemeInfoFile)
+var auralisColumnsTableDescriptor = TableDescriptor{
+	source: SchemeTable[string, string]{internalSchema, columns},
+	columnDescriptors: []ColumnDescriptor{
+		{
+			name:     "table_schema",
+			dataType: varchar,
+		},
+		{
+			name:     "table_name",
+			dataType: varchar,
+		},
+		{
+			name:     "column_name",
+			dataType: varchar,
+		},
+		{
+			name:     "data_type",
+			dataType: varchar,
+		},
+		{
+			name:     "position",
+			dataType: smallint,
+		},
+	},
+}
+
+func initDatabaseInternalStructure() {
+	err := os.Mkdir("data", os.ModePerm)
 	if err != nil {
-		return err
+		panic(err)
+	}
+
+	schemeF, err := os.Create("data/auralis.aura_tables") // TODO: magic strings
+	if err != nil {
+		panic(err)
 	}
 	defer schemeF.Close()
 
-	return nil
+	schemeF, err = os.Create("data/auralis.aura_columns")
+	if err != nil {
+		panic(err)
+	}
+	defer schemeF.Close()
 }
 
+func getAuralisTables() (*DataSet, error) {
+	return readFromTable(auralisTablesTableDescriptor,
+		[]string{"database_name", "table_schema", "table_name"})
+}
+
+func getAuralisColumns() (*DataSet, error) {
+	return readFromTable(auralisColumnsTableDescriptor,
+		[]string{"table_schema", "table_name", "column_name", "data_type", "position"})
+}
+
+// TODO: implement WHERE clause for table_name/scheme
 func getTableDescriptor(source SchemeTable[string, string]) (TableDescriptor, error) {
-	fileBytes, err := os.ReadFile(schemeInfoFile)
+	dataSet, err := readFromTable(auralisColumnsTableDescriptor,
+		[]string{"table_schema", "table_name", "column_name", "data_type", "position"})
 	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return TableDescriptor{}, ErrTableNotFound
-		}
 		return TableDescriptor{}, err
 	}
 
-	tableDescriptors := make([]TableDescriptor, 0)
-	l := 0
-	td := TableDescriptor{}
-
-	for i := range fileBytes {
-		if fileBytes[i] == byte('|') {
-			parts := strings.Split(string(fileBytes[l:i]), ".")
-			if td.source.name == "" && td.source.scheme == "" {
-				td.source = SchemeTable[string, string]{parts[0], parts[1]}
-			} else {
-				td.columnDescriptors = append(td.columnDescriptors, ColumnDescriptor{
-					name:     parts[0],
-					dataType: DataType(parts[1]),
-				})
+	sourceColumnDescriptors := []ColumnDescriptor{}
+	for _, row := range dataSet.rows {
+		sourceColumnDescriptor := ColumnDescriptor{}
+		for i, cell := range row.cells {
+			if dataSet.columnDescriptors[i].name == "column_name" {
+				sourceColumnDescriptor.name = cell.value.(string)
 			}
 
-			l = i + 1
+			if dataSet.columnDescriptors[i].name == "data_type" {
+				sourceColumnDescriptor.dataType = DataType(cell.value.(string))
+			}
+
+			if dataSet.columnDescriptors[i].name == "position" {
+				sourceColumnDescriptor.position = int(cell.value.(int16))
+			}
 		}
 
-		if fileBytes[i] == byte(terminationByte) {
-			parts := strings.Split(string(fileBytes[l:i]), ".")
-			td.columnDescriptors = append(td.columnDescriptors, ColumnDescriptor{
-				name:     parts[0],
-				dataType: DataType(parts[1]),
-			})
-
-			tableDescriptors = append(tableDescriptors, td)
-		}
+		sourceColumnDescriptors = append(sourceColumnDescriptors, sourceColumnDescriptor)
 	}
 
-	var exists TableDescriptor
-	for _, td := range tableDescriptors {
-		if td.source.name == source.name && td.source.scheme == source.scheme {
-			exists = td
-			return exists, nil
-		}
-	}
-
-	return TableDescriptor{}, ErrTableDescriptorNotFound
+	return TableDescriptor{
+		source:            source,
+		columnDescriptors: sourceColumnDescriptors,
+	}, nil
 }
 
 func addTableDescriptor(tableDescriptor TableDescriptor) error {
-	schemeFile, err := os.OpenFile(schemeInfoFile, os.O_RDWR, 0600)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return ErrTableNotFound
-		}
-		return err
-	}
-	defer schemeFile.Close()
+	writeIntoTable(SchemeTable[string, string]{internalSchema, tables}, DataSet{
+		columnDescriptors: auralisTablesTableDescriptor.columnDescriptors,
+		rows: []Row{
+			{
+				cells: []Cell{{"test-database"}, {tableDescriptor.source.scheme}, {tableDescriptor.source.name}},
+			},
+		},
+	})
 
-	b := strings.Builder{}
-	b.WriteString(fmt.Sprintf("%s.%s", tableDescriptor.source.scheme, tableDescriptor.source.name))
-
+	rows := []Row{}
 	for _, cd := range tableDescriptor.columnDescriptors {
-		b.WriteString(fmt.Sprintf("|%s.%s", cd.name, cd.dataType))
+		rows = append(rows, Row{
+			cells: []Cell{
+				{tableDescriptor.source.scheme}, {tableDescriptor.source.name}, {cd.name}, {string(cd.dataType)}, {cd.position},
+			},
+		})
 	}
 
-	b.WriteString("\n")
-
-	_, err = schemeFile.WriteString(b.String())
-	if err != nil {
-		return err
-	}
+	writeIntoTable(SchemeTable[string, string]{internalSchema, columns}, DataSet{
+		columnDescriptors: auralisColumnsTableDescriptor.columnDescriptors,
+		rows:              rows,
+	})
 
 	return nil
 }

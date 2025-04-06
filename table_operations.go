@@ -196,7 +196,7 @@ func readFromTable(tableDescriptor TableDescriptor, selectedColumns []string) (*
 					copy(data, rowBuf[rowOffset:rowOffset+cellDataSize])
 
 					row.cells = append(row.cells, Cell{
-						value: data,
+						value: int16(binary.BigEndian.Uint16(data)),
 					})
 				}
 			case varchar:
@@ -206,7 +206,7 @@ func readFromTable(tableDescriptor TableDescriptor, selectedColumns []string) (*
 					copy(data, rowBuf[rowOffset:rowOffset+cellDataSize])
 
 					row.cells = append(row.cells, Cell{
-						value: data,
+						value: string(bytes.TrimRight(data, "\x00")),
 					})
 				}
 			case uniqueidentifier:
@@ -216,7 +216,7 @@ func readFromTable(tableDescriptor TableDescriptor, selectedColumns []string) (*
 					copy(data, rowBuf[rowOffset:rowOffset+cellDataSize])
 
 					row.cells = append(row.cells, Cell{
-						value: data,
+						value: uuid.UUID(data),
 					})
 
 				}
