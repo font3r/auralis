@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/binary"
 	"fmt"
 	"math"
 	"os"
@@ -137,18 +136,8 @@ func displayDataSet(dataSet *DataSet) {
 
 	for _, dataRow := range dataSet.rows {
 		tableRow := table.Row{}
-		var formattedCell string
-		for i, dataCell := range dataRow.cells {
-			switch dataSet.columnDescriptors[i].dataType {
-			case smallint:
-				formattedCell = fmt.Sprintf("%d", int16(binary.BigEndian.Uint16(dataCell.value.([]byte))))
-			case uniqueidentifier:
-				formattedCell = fmt.Sprintf("%x", dataCell.value)
-			default:
-				formattedCell = fmt.Sprintf("%s", dataCell.value)
-			}
-
-			tableRow = append(tableRow, formattedCell)
+		for _, dataCell := range dataRow.cells {
+			tableRow = append(tableRow, fmt.Sprintf("%v", dataCell.value))
 		}
 		t.AppendRow(tableRow)
 	}
