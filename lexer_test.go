@@ -137,7 +137,6 @@ func TestInsertStatementLexer(t *testing.T) {
 			expected: []TokenLiteral{
 				{kind: keyword, value: "insert"},
 				{kind: keyword, value: "into"},
-				{kind: symbol, value: "test"},
 				{kind: symbol, value: "users"},
 				{kind: keyword, value: "values"},
 				{kind: openingroundbracket, value: "("},
@@ -149,6 +148,25 @@ func TestInsertStatementLexer(t *testing.T) {
 		},
 		{
 			raw: "INSERT INTO users (id1, id2) VALUES ('1','2')",
+			expected: []TokenLiteral{
+				{kind: keyword, value: "insert"},
+				{kind: keyword, value: "into"},
+				{kind: symbol, value: "users"},
+				{kind: openingroundbracket, value: "("},
+				{kind: symbol, value: "id1"},
+				{kind: comma, value: ","},
+				{kind: symbol, value: "id2"},
+				{kind: closingroundbracket, value: ")"},
+				{kind: keyword, value: "values"},
+				{kind: openingroundbracket, value: "("},
+				{kind: symbol, value: "'1'"},
+				{kind: comma, value: ","},
+				{kind: symbol, value: "'2'"},
+				{kind: closingroundbracket, value: ")"},
+			},
+		},
+		{
+			raw: "INSERT INTO users(id1, id2) VALUES ('1','2')",
 			expected: []TokenLiteral{
 				{kind: keyword, value: "insert"},
 				{kind: keyword, value: "into"},
