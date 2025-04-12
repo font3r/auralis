@@ -79,6 +79,10 @@ var auralisColumnsTableDescriptor = TableDescriptor{
 }
 
 func initDatabaseInternalStructure() {
+	if _, err := os.Stat(dataPath); !os.IsNotExist(err) {
+		return
+	}
+
 	err := os.Mkdir(dataPath, os.ModePerm)
 	if err != nil {
 		panic(err)
