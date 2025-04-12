@@ -1,7 +1,12 @@
 package main
 
 import (
+	"errors"
 	"fmt"
+	"strconv"
+	"strings"
+
+	"github.com/google/uuid"
 )
 
 func ExecuteQuery(raw string) (*DataSet, error) {
@@ -24,13 +29,16 @@ func ExecuteQuery(raw string) (*DataSet, error) {
 	switch query := query.(type) {
 	case SelectQuery:
 		{
-			var dataSet *DataSet
-			var err error
+			tableDescriptor, err := getTableDescriptor(query.source)
+			if err != nil {
+				return &DataSet{}, err
+			}
 
+			var dataSet *DataSet
 			if len(query.columns) == 1 && query.columns[0] == "*" {
-				dataSet, err = readAllFromTable(query.source)
+				dataSet, err = readAllFromTable(tableDescriptor)
 			} else {
-				dataSet, err = readColumnsFromTable(query.source, query.columns)
+				dataSet, err = readColumnsFromTable(tableDescriptor, query.columns)
 			}
 
 			if err != nil {
@@ -38,6 +46,57 @@ func ExecuteQuery(raw string) (*DataSet, error) {
 			}
 
 			return dataSet, nil
+		}
+	case InsertQuery:
+		{
+			tableDescriptor, err := getTableDescriptor(query.destination)
+			if err != nil {
+				return &DataSet{}, err
+			}
+
+			// TODO: validate provided data against table descriptor and cast datatype
+			// TODO: handle default values in case of non-null columns (that are also not supported)
+			rows := []Row{}
+			for _, valueRow := range query.values {
+				row := Row{cells: make([]any, 0, len(valueRow))}
+				for i, valueCell := range valueRow {
+					switch tableDescriptor.columnDescriptors[i].dataType {
+					case smallint:
+						{
+							v, err := strconv.Atoi(valueCell.(string))
+							if err != nil {
+								return nil, errors.New("invalid smallint cell value")
+							}
+
+							row.cells = append(row.cells, v)
+						}
+					case varchar:
+						{
+							row.cells = append(row.cells, strings.Trim(valueCell.(string), "'"))
+						}
+					case uniqueidentifier:
+						{
+							v, err := uuid.Parse(valueCell.(string))
+							if err != nil {
+								return nil, errors.New("invalid UUID cell value")
+							}
+
+							row.cells = append(row.cells, v)
+						}
+					default:
+						panic("unhandled type during insert query")
+					}
+				}
+
+				rows = append(rows, row)
+			}
+
+			err = writeIntoTable(tableDescriptor, DataSet{
+				columnDescriptors: tableDescriptor.columnDescriptors,
+				rows:              rows,
+			})
+
+			return nil, err
 		}
 	default:
 		{

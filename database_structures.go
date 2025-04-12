@@ -20,7 +20,7 @@ var (
 )
 
 type TableDescriptor struct {
-	source            SchemeTable[string, string]
+	schemeTable       SchemeTable[string, string]
 	columnDescriptors []ColumnDescriptor // describes table schema
 }
 
@@ -32,7 +32,7 @@ type ColumnDescriptor struct {
 }
 
 var auralisTablesTableDescriptor = TableDescriptor{
-	source: SchemeTable[string, string]{internalSchema, tables},
+	schemeTable: SchemeTable[string, string]{internalSchema, tables},
 	columnDescriptors: []ColumnDescriptor{
 		{
 			name:     "database_name",
@@ -53,7 +53,7 @@ var auralisTablesTableDescriptor = TableDescriptor{
 }
 
 var auralisColumnsTableDescriptor = TableDescriptor{
-	source: SchemeTable[string, string]{internalSchema, columns},
+	schemeTable: SchemeTable[string, string]{internalSchema, columns},
 	columnDescriptors: []ColumnDescriptor{
 		{
 			name:     "table_schema",
@@ -84,7 +84,7 @@ func initDatabaseInternalStructure() {
 		panic(err)
 	}
 
-	schemeF, err := os.Create(tables)
+	schemeF, err := os.Create(tablesPath)
 	if err != nil {
 		panic(err)
 	}
@@ -120,15 +120,15 @@ func getTableDescriptor(source SchemeTable[string, string]) (TableDescriptor, er
 		sourceColumnDescriptor := ColumnDescriptor{}
 		for i, cell := range row.cells {
 			if dataSet.columnDescriptors[i].name == "column_name" {
-				sourceColumnDescriptor.name = cell.value.(string)
+				sourceColumnDescriptor.name = cell.(string)
 			}
 
 			if dataSet.columnDescriptors[i].name == "data_type" {
-				sourceColumnDescriptor.dataType = DataType(cell.value.(string))
+				sourceColumnDescriptor.dataType = DataType(cell.(string))
 			}
 
 			if dataSet.columnDescriptors[i].name == "position" {
-				sourceColumnDescriptor.position = int(cell.value.(int16))
+				sourceColumnDescriptor.position = int(cell.(int16))
 			}
 		}
 
@@ -136,31 +136,34 @@ func getTableDescriptor(source SchemeTable[string, string]) (TableDescriptor, er
 	}
 
 	return TableDescriptor{
-		source:            source,
+		schemeTable:       source,
 		columnDescriptors: sourceColumnDescriptors,
 	}, nil
 }
 
 func addTableDescriptor(tableDescriptor TableDescriptor) error {
-	writeIntoTable(SchemeTable[string, string]{internalSchema, tables}, DataSet{
-		columnDescriptors: auralisTablesTableDescriptor.columnDescriptors,
-		rows: []Row{
-			{
-				cells: []Cell{{"test-database"}, {tableDescriptor.source.scheme}, {tableDescriptor.source.name}},
+	writeIntoTable(auralisTablesTableDescriptor,
+		DataSet{
+			columnDescriptors: auralisTablesTableDescriptor.columnDescriptors,
+			rows: []Row{
+				{
+					cells: []any{"test-database", tableDescriptor.schemeTable.scheme,
+						tableDescriptor.schemeTable.name},
+				},
 			},
-		},
-	})
+		})
 
 	rows := []Row{}
 	for _, cd := range tableDescriptor.columnDescriptors {
 		rows = append(rows, Row{
-			cells: []Cell{
-				{tableDescriptor.source.scheme}, {tableDescriptor.source.name}, {cd.name}, {string(cd.dataType)}, {cd.position},
+			cells: []any{
+				tableDescriptor.schemeTable.scheme, tableDescriptor.schemeTable.name,
+				cd.name, string(cd.dataType), cd.position,
 			},
 		})
 	}
 
-	writeIntoTable(SchemeTable[string, string]{internalSchema, columns}, DataSet{
+	writeIntoTable(auralisColumnsTableDescriptor, DataSet{
 		columnDescriptors: auralisColumnsTableDescriptor.columnDescriptors,
 		rows:              rows,
 	})

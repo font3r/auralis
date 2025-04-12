@@ -7,12 +7,14 @@ Simple relational database with pgql compatible sql dialect
 - [x] querying specific fields
   - [ ] any column order
   - [ ] aliasing
-  - [ ] query result set pretty print
-- [ ] basic data structures
+  - [x] query result set pretty print
+- [x] basic data structures
   - [ ] variable character types
+- [ ] data paging
 - [ ] DML
 - [ ] DDL
 - [ ] indexing
+- [ ] nullable columns
 - [ ] TCL
 - [ ] expose server
 - [x] basic lexer

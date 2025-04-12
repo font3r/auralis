@@ -172,8 +172,30 @@ func TestInsertParser(t *testing.T) {
 			expectedCmd: InsertQuery{
 				destination: SchemeTable[string, string]{"dbo", "users"},
 				columns:     []string{"id"},
-				values: [][]string{
+				values: [][]any{
 					{"1"},
+				},
+			},
+			expectedErr: nil,
+		},
+		"valid insert values with single quotation marks and columns specification": {
+			tokens: []TokenLiteral{
+				{kind: keyword, value: "insert"},
+				{kind: keyword, value: "into"},
+				{kind: symbol, value: "users"},
+				{kind: openingroundbracket, value: "("},
+				{kind: symbol, value: "name"},
+				{kind: closingroundbracket, value: ")"},
+				{kind: keyword, value: "values"},
+				{kind: openingroundbracket, value: "("},
+				{kind: symbol, value: "'example'"},
+				{kind: closingroundbracket, value: ")"},
+			},
+			expectedCmd: InsertQuery{
+				destination: SchemeTable[string, string]{"dbo", "users"},
+				columns:     []string{"name"},
+				values: [][]any{
+					{"'example'"},
 				},
 			},
 			expectedErr: nil,
