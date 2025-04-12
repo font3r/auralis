@@ -15,37 +15,9 @@ func main() {
 		panic("missing query")
 	}
 
+	initDatabaseInternalStructure()
+
 	switch args[1] {
-	case "init":
-		{
-			initDatabaseInternalStructure()
-
-			// create test table
-			err := cretateTable(TableDescriptor{
-				schemeTable: SchemeTable[string, string]{"dbo", "users"},
-				columnDescriptors: []ColumnDescriptor{
-					{
-						name:     "id",
-						dataType: uniqueidentifier,
-						position: 1,
-					},
-					{
-						name:     "name",
-						dataType: varchar,
-						position: 2,
-					},
-					{
-						name:     "age",
-						dataType: smallint,
-						position: 3,
-					},
-				},
-			})
-
-			if err != nil {
-				panic(err)
-			}
-		}
 	case "tables":
 		{
 			dataSet, err := getAuralisTables()
@@ -70,7 +42,7 @@ func main() {
 		{
 			dataSet, err := ExecuteQuery(args[1])
 			if err != nil {
-				panic(err)
+				log.Fatal(err)
 			}
 
 			fmt.Println()

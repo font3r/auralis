@@ -18,9 +18,14 @@ type SelectQuery struct {
 }
 
 type InsertQuery struct {
-	destination SchemeTable[string, string]
-	columns     []string // column names
-	values      [][]any  // column values
+	source  SchemeTable[string, string]
+	columns []string // column names
+	values  [][]any  // column values
+}
+
+type CreateTableQuery struct {
+	source  SchemeTable[string, string]
+	columns map[string][]string
 }
 
 func ParseTokens(tokens []TokenLiteral) (any, error) {
@@ -127,9 +132,9 @@ func parseInsert(tokens *[]TokenLiteral) (InsertQuery, error) {
 	} else {
 		s := strings.Split(v[i].value, ".")
 		if len(s) == 1 {
-			q.destination = SchemeTable[string, string]{"dbo", s[0]}
+			q.source = SchemeTable[string, string]{"dbo", s[0]}
 		} else {
-			q.destination = SchemeTable[string, string]{s[0], s[1]}
+			q.source = SchemeTable[string, string]{s[0], s[1]}
 		}
 	}
 	i++

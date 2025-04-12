@@ -170,8 +170,8 @@ func TestInsertParser(t *testing.T) {
 				{kind: closingroundbracket, value: ")"},
 			},
 			expectedCmd: InsertQuery{
-				destination: SchemeTable[string, string]{"dbo", "users"},
-				columns:     []string{"id"},
+				source:  SchemeTable[string, string]{"dbo", "users"},
+				columns: []string{"id"},
 				values: [][]any{
 					{"1"},
 				},
@@ -192,8 +192,8 @@ func TestInsertParser(t *testing.T) {
 				{kind: closingroundbracket, value: ")"},
 			},
 			expectedCmd: InsertQuery{
-				destination: SchemeTable[string, string]{"dbo", "users"},
-				columns:     []string{"name"},
+				source:  SchemeTable[string, string]{"dbo", "users"},
+				columns: []string{"name"},
 				values: [][]any{
 					{"'example'"},
 				},

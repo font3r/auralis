@@ -28,79 +28,113 @@ func ExecuteQuery(raw string) (*DataSet, error) {
 
 	switch query := query.(type) {
 	case SelectQuery:
-		{
-			tableDescriptor, err := getTableDescriptor(query.source)
-			if err != nil {
-				return &DataSet{}, err
-			}
-
-			var dataSet *DataSet
-			if len(query.columns) == 1 && query.columns[0] == "*" {
-				dataSet, err = readAllFromTable(tableDescriptor)
-			} else {
-				dataSet, err = readColumnsFromTable(tableDescriptor, query.columns)
-			}
-
-			if err != nil {
-				return &DataSet{}, err
-			}
-
-			return dataSet, nil
-		}
+		return handleSelectQuery(query)
 	case InsertQuery:
-		{
-			tableDescriptor, err := getTableDescriptor(query.destination)
-			if err != nil {
-				return &DataSet{}, err
-			}
-
-			// TODO: validate provided data against table descriptor and cast datatype
-			// TODO: handle default values in case of non-null columns (that are also not supported)
-			rows := []Row{}
-			for _, valueRow := range query.values {
-				row := Row{cells: make([]any, 0, len(valueRow))}
-				for i, valueCell := range valueRow {
-					switch tableDescriptor.columnDescriptors[i].dataType {
-					case smallint:
-						{
-							v, err := strconv.Atoi(valueCell.(string))
-							if err != nil {
-								return nil, errors.New("invalid smallint cell value")
-							}
-
-							row.cells = append(row.cells, v)
-						}
-					case varchar:
-						{
-							row.cells = append(row.cells, strings.Trim(valueCell.(string), "'"))
-						}
-					case uniqueidentifier:
-						{
-							v, err := uuid.Parse(valueCell.(string))
-							if err != nil {
-								return nil, errors.New("invalid UUID cell value")
-							}
-
-							row.cells = append(row.cells, v)
-						}
-					default:
-						panic("unhandled type during insert query")
-					}
-				}
-
-				rows = append(rows, row)
-			}
-
-			err = writeIntoTable(tableDescriptor, DataSet{
-				columnDescriptors: tableDescriptor.columnDescriptors,
-				rows:              rows,
-			})
-
-			return nil, err
-		}
+		return handleInsertQuery(query)
+	case CreateTableQuery:
+		return handleCreateTableQuery(query)
 	default:
-		{
-			panic("unsupported query")
-		}
+		panic("unsupported query")
 	}
+}
+
+func handleSelectQuery(query SelectQuery) (*DataSet, error) {
+	tableDescriptor, err := getTableDescriptor(query.source)
+	if err != nil {
+		return &DataSet{}, err
+	}
+
+	var dataSet *DataSet
+	if len(query.columns) == 1 && query.columns[0] == "*" {
+		dataSet, err = readAllFromTable(tableDescriptor)
+	} else {
+		dataSet, err = readColumnsFromTable(tableDescriptor, query.columns)
+	}
+
+	if err != nil {
+		return &DataSet{}, err
+	}
+
+	return dataSet, nil
+}
+
+func handleInsertQuery(query InsertQuery) (*DataSet, error) {
+	tableDescriptor, err := getTableDescriptor(query.source)
+	if err != nil {
+		return &DataSet{}, err
+	}
+
+	// TODO: validate provided data against table descriptor and cast datatype
+	// TODO: handle default values in case of non-null columns (that are also not supported)
+	rows := []Row{}
+	for _, valueRow := range query.values {
+		row := Row{cells: make([]any, 0, len(valueRow))}
+		for i, valueCell := range valueRow {
+			switch tableDescriptor.columnDescriptors[i].dataType {
+			case smallint:
+				{
+					v, err := strconv.Atoi(valueCell.(string))
+					if err != nil {
+						return nil, errors.New("invalid smallint cell value")
+					}
+
+					row.cells = append(row.cells, v)
+				}
+			case varchar:
+				{
+					row.cells = append(row.cells, strings.Trim(valueCell.(string), "'"))
+				}
+			case uniqueidentifier:
+				{
+					v, err := uuid.Parse(valueCell.(string))
+					if err != nil {
+						return nil, errors.New("invalid UUID cell value")
+					}
+
+					row.cells = append(row.cells, v)
+				}
+			default:
+				panic("unhandled type during insert query")
+			}
+		}
+
+		rows = append(rows, row)
+	}
+
+	err = writeIntoTable(tableDescriptor, DataSet{
+		columnDescriptors: tableDescriptor.columnDescriptors,
+		rows:              rows,
+	})
+
+	return nil, err
+}
+
+func handleCreateTableQuery(query CreateTableQuery) (*DataSet, error) {
+	// create test table
+	err := cretateTable(TableDescriptor{
+		schemeTable: SchemeTable[string, string]{"dbo", "users"},
+		columnDescriptors: []ColumnDescriptor{
+			{
+				name:     "id",
+				dataType: uniqueidentifier,
+				position: 1,
+			},
+			{
+				name:     "name",
+				dataType: varchar,
+				position: 2,
+			},
+			{
+				name:     "age",
+				dataType: smallint,
+				position: 3,
+			},
+		},
+	})
+
+	if err != nil {
+		panic(err)
+	}
+
+	return nil, nil
 }
