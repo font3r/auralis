@@ -2,7 +2,7 @@ package main
 
 import (
 	"errors"
-	"fmt"
+	"log"
 	"strconv"
 	"strings"
 
@@ -17,14 +17,14 @@ func ExecuteQuery(raw string) (*DataSet, error) {
 			Message: "missing query tokens"}
 	}
 
-	fmt.Printf("INFO: tokens %v\n", tokens)
+	log.Printf("INFO: tokens %v\n", tokens)
 
 	query, err := ParseTokens(tokens)
 	if err != nil {
 		return &DataSet{}, err
 	}
 
-	fmt.Printf("INFO: parsed query %v\n", query)
+	log.Printf("INFO: parsed query %v\n", query)
 
 	switch query := query.(type) {
 	case SelectQuery:

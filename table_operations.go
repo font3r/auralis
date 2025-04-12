@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"slices"
 
@@ -144,7 +145,7 @@ func readFromTable(tableDescriptor TableDescriptor, selectedColumns []string) (*
 	}
 	defer f.Close()
 
-	fmt.Printf("INFO: %s.%s table descriptor %+v\n", tableDescriptor.schemeTable.scheme,
+	log.Printf("INFO: %s.%s table descriptor %+v\n", tableDescriptor.schemeTable.scheme,
 		tableDescriptor.schemeTable.name, tableDescriptor)
 
 	dataSet := DataSet{}

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -76,7 +77,7 @@ func main() {
 			if dataSet != nil {
 				displayDataSet(dataSet)
 			} else {
-				fmt.Printf("NO RESULT\n")
+				log.Printf("NO RESULT\n")
 			}
 		}
 	}
