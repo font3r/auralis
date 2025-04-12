@@ -19,11 +19,7 @@ type DataSet struct {
 }
 
 type Row struct {
-	cells []Cell
-}
-
-type Cell struct {
-	value any
+	cells []any
 }
 
 type DataType string
@@ -49,7 +45,7 @@ func cretateTable(td TableDescriptor) error {
 		return err
 	}
 
-	f, err := os.Create(getTableDiskPath(td.source))
+	f, err := os.Create(getTableDiskPath(td.schemeTable))
 	if err != nil {
 		return err
 	}
@@ -58,9 +54,8 @@ func cretateTable(td TableDescriptor) error {
 	return nil
 }
 
-// TODO: dataSet validation against table descriptor
-func writeIntoTable(source SchemeTable[string, string], dataSet DataSet) error {
-	f, err := os.OpenFile(getTableDiskPath(source), os.O_WRONLY|os.O_APPEND, 0600)
+func writeIntoTable(tableDescriptor TableDescriptor, dataSet DataSet) error {
+	f, err := os.OpenFile(getTableDiskPath(tableDescriptor.schemeTable), os.O_WRONLY|os.O_APPEND, 0600)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return ErrTableNotFound
@@ -74,12 +69,12 @@ func writeIntoTable(source SchemeTable[string, string], dataSet DataSet) error {
 	for _, row := range dataSet.rows {
 		for cellIndex, cell := range row.cells {
 			var val []byte
-			switch dataSet.columnDescriptors[cellIndex].dataType {
+			switch tableDescriptor.columnDescriptors[cellIndex].dataType {
 			case smallint:
 				{
 					buf := bytes.NewBuffer(make([]byte, 0, getDataTypeByteSize(smallint)))
 					// binary writer is implicitly converting to uint16 with two's complement
-					err := binary.Write(buf, binary.BigEndian, uint16(cell.value.(int)))
+					err := binary.Write(buf, binary.BigEndian, uint16(cell.(int)))
 					if err != nil {
 						return err
 					}
@@ -90,12 +85,12 @@ func writeIntoTable(source SchemeTable[string, string], dataSet DataSet) error {
 				{
 					// we don't care about endianness because we support only utf-8 for now
 					padded := make([]byte, getDataTypeByteSize(varchar))
-					copy(padded, cell.value.(string))
+					copy(padded, cell.(string))
 					val = padded
 				}
 			case uniqueidentifier:
 				{
-					val, err = cell.value.(uuid.UUID).MarshalBinary()
+					val, err = cell.(uuid.UUID).MarshalBinary()
 					if err != nil {
 						return err
 					}
@@ -124,12 +119,7 @@ func writeIntoTable(source SchemeTable[string, string], dataSet DataSet) error {
 	return nil
 }
 
-func readAllFromTable(source SchemeTable[string, string]) (*DataSet, error) {
-	tableDescriptor, err := getTableDescriptor(source)
-	if err != nil {
-		return &DataSet{}, err
-	}
-
+func readAllFromTable(tableDescriptor TableDescriptor) (*DataSet, error) {
 	columns := []string{}
 	for _, v := range tableDescriptor.columnDescriptors {
 		columns = append(columns, v.name)
@@ -138,17 +128,13 @@ func readAllFromTable(source SchemeTable[string, string]) (*DataSet, error) {
 	return readFromTable(tableDescriptor, columns)
 }
 
-func readColumnsFromTable(source SchemeTable[string, string], columns []string) (*DataSet, error) {
-	tableDescriptor, err := getTableDescriptor(source)
-	if err != nil {
-		return &DataSet{}, err
-	}
-
+func readColumnsFromTable(tableDescriptor TableDescriptor,
+	columns []string) (*DataSet, error) {
 	return readFromTable(tableDescriptor, columns)
 }
 
 func readFromTable(tableDescriptor TableDescriptor, selectedColumns []string) (*DataSet, error) {
-	f, err := os.Open(getTableDiskPath(tableDescriptor.source))
+	f, err := os.Open(getTableDiskPath(tableDescriptor.schemeTable))
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return nil, ErrTableNotFound
@@ -158,11 +144,15 @@ func readFromTable(tableDescriptor TableDescriptor, selectedColumns []string) (*
 	}
 	defer f.Close()
 
-	fmt.Printf("INFO: %s.%s table descriptor %+v\n", tableDescriptor.source.scheme,
-		tableDescriptor.source.name, tableDescriptor)
+	fmt.Printf("INFO: %s.%s table descriptor %+v\n", tableDescriptor.schemeTable.scheme,
+		tableDescriptor.schemeTable.name, tableDescriptor)
 
 	dataSet := DataSet{}
-	dataSet.columnDescriptors = tableDescriptor.columnDescriptors
+	for _, v := range tableDescriptor.columnDescriptors {
+		if slices.Contains(selectedColumns, v.name) {
+			dataSet.columnDescriptors = append(dataSet.columnDescriptors, v)
+		}
+	}
 
 	var fileOffset int64 = 0
 	rowBuffSize := calculateRowBuffer(tableDescriptor)
@@ -195,9 +185,7 @@ func readFromTable(tableDescriptor TableDescriptor, selectedColumns []string) (*
 					data := make([]byte, cellDataSize)
 					copy(data, rowBuf[rowOffset:rowOffset+cellDataSize])
 
-					row.cells = append(row.cells, Cell{
-						value: int16(binary.BigEndian.Uint16(data)),
-					})
+					row.cells = append(row.cells, int16(binary.BigEndian.Uint16(data)))
 				}
 			case varchar:
 				{
@@ -205,9 +193,7 @@ func readFromTable(tableDescriptor TableDescriptor, selectedColumns []string) (*
 					data := make([]byte, cellDataSize)
 					copy(data, rowBuf[rowOffset:rowOffset+cellDataSize])
 
-					row.cells = append(row.cells, Cell{
-						value: string(bytes.TrimRight(data, "\x00")),
-					})
+					row.cells = append(row.cells, string(bytes.TrimRight(data, "\x00")))
 				}
 			case uniqueidentifier:
 				{
@@ -215,9 +201,7 @@ func readFromTable(tableDescriptor TableDescriptor, selectedColumns []string) (*
 					data := make([]byte, cellDataSize)
 					copy(data, rowBuf[rowOffset:rowOffset+cellDataSize])
 
-					row.cells = append(row.cells, Cell{
-						value: uuid.UUID(data),
-					})
+					row.cells = append(row.cells, uuid.UUID(data))
 
 				}
 			default:

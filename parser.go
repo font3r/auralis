@@ -19,8 +19,8 @@ type SelectQuery struct {
 
 type InsertQuery struct {
 	destination SchemeTable[string, string]
-	columns     []string   // column names
-	values      [][]string // column values
+	columns     []string // column names
+	values      [][]any  // column values
 }
 
 func ParseTokens(tokens []TokenLiteral) (any, error) {
@@ -180,7 +180,7 @@ func parseInsert(tokens *[]TokenLiteral) (InsertQuery, error) {
 		}
 
 		if len(q.values)-1 < dataSet {
-			q.values = append(q.values, []string{})
+			q.values = append(q.values, []any{})
 		}
 
 		q.values[dataSet] = append(q.values[dataSet], v[i].value)
