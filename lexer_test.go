@@ -83,12 +83,90 @@ func TestSelectStatementLexer(t *testing.T) {
 				{kind: symbol, value: "users"},
 			},
 		},
+		{
+			raw: "SELECT * FROM users WHERE id = 1",
+			expected: []TokenLiteral{
+				{kind: keyword, value: "select"},
+				{kind: symbol, value: "*"},
+				{kind: keyword, value: "from"},
+				{kind: symbol, value: "users"},
+				{kind: keyword, value: "where"},
+				{kind: symbol, value: "id"},
+				{kind: equal, value: "="},
+				{kind: symbol, value: "1"},
+			},
+		},
+		{
+			raw: "SELECT * FROM users WHERE id != 1",
+			expected: []TokenLiteral{
+				{kind: keyword, value: "select"},
+				{kind: symbol, value: "*"},
+				{kind: keyword, value: "from"},
+				{kind: symbol, value: "users"},
+				{kind: keyword, value: "where"},
+				{kind: symbol, value: "id"},
+				{kind: notequal, value: "!="},
+				{kind: symbol, value: "1"},
+			},
+		},
+		{
+			raw: "SELECT * FROM users WHERE id < 1",
+			expected: []TokenLiteral{
+				{kind: keyword, value: "select"},
+				{kind: symbol, value: "*"},
+				{kind: keyword, value: "from"},
+				{kind: symbol, value: "users"},
+				{kind: keyword, value: "where"},
+				{kind: symbol, value: "id"},
+				{kind: less, value: "<"},
+				{kind: symbol, value: "1"},
+			},
+		},
+		{
+			raw: "SELECT * FROM users WHERE id > 1",
+			expected: []TokenLiteral{
+				{kind: keyword, value: "select"},
+				{kind: symbol, value: "*"},
+				{kind: keyword, value: "from"},
+				{kind: symbol, value: "users"},
+				{kind: keyword, value: "where"},
+				{kind: symbol, value: "id"},
+				{kind: greater, value: ">"},
+				{kind: symbol, value: "1"},
+			},
+		},
+		{
+			raw: "SELECT * FROM users WHERE id <= 1",
+			expected: []TokenLiteral{
+				{kind: keyword, value: "select"},
+				{kind: symbol, value: "*"},
+				{kind: keyword, value: "from"},
+				{kind: symbol, value: "users"},
+				{kind: keyword, value: "where"},
+				{kind: symbol, value: "id"},
+				{kind: lessorequal, value: "<="},
+				{kind: symbol, value: "1"},
+			},
+		},
+		{
+			raw: "SELECT * FROM users WHERE id >= 1",
+			expected: []TokenLiteral{
+				{kind: keyword, value: "select"},
+				{kind: symbol, value: "*"},
+				{kind: keyword, value: "from"},
+				{kind: symbol, value: "users"},
+				{kind: keyword, value: "where"},
+				{kind: symbol, value: "id"},
+				{kind: greaterorequal, value: ">="},
+				{kind: symbol, value: "1"},
+			},
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.raw, func(t *testing.T) {
 			tokens := Analyze(tC.raw)
 			if !slices.Equal(tokens, tC.expected) {
-				t.Errorf("expect result %+v\n got %+v", tC.expected, tokens)
+				t.Errorf("\nexp %+v\ngot %+v", tC.expected, tokens)
 			}
 		})
 	}
@@ -210,6 +288,31 @@ func TestInsertStatementLexer(t *testing.T) {
 			},
 		},
 	}
+	for _, tC := range testCases {
+		t.Run(tC.raw, func(t *testing.T) {
+			tokens := Analyze(tC.raw)
+			if !slices.Equal(tokens, tC.expected) {
+				t.Errorf("\nexp %+v\ngot %+v", tC.expected, tokens)
+			}
+		})
+	}
+}
+
+func TestCreateStatementLexer(t *testing.T) {
+	testCases := []struct {
+		raw      string
+		expected []TokenLiteral
+	}{
+		{
+			raw: "create table users",
+			expected: []TokenLiteral{
+				{kind: keyword, value: "create"},
+				{kind: keyword, value: "table"},
+				{kind: symbol, value: "users"},
+			},
+		},
+	}
+
 	for _, tC := range testCases {
 		t.Run(tC.raw, func(t *testing.T) {
 			tokens := Analyze(tC.raw)

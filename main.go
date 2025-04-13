@@ -17,41 +17,16 @@ func main() {
 
 	initDatabaseInternalStructure()
 
-	switch args[1] {
-	case "tables":
-		{
-			dataSet, err := getAuralisTables()
-			if err != nil {
-				panic(err)
-			}
+	dataSet, err := ExecuteQuery(args[1])
+	if err != nil {
+		log.Fatal(err)
+	}
 
-			fmt.Println()
-			displayDataSet(dataSet)
-		}
-	case "columns":
-		{
-			dataSet, err := getAuralisColumns()
-			if err != nil {
-				panic(err)
-			}
-
-			fmt.Println()
-			displayDataSet(dataSet)
-		}
-	default:
-		{
-			dataSet, err := ExecuteQuery(args[1])
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			fmt.Println()
-			if dataSet != nil {
-				displayDataSet(dataSet)
-			} else {
-				log.Printf("NO RESULT\n")
-			}
-		}
+	fmt.Println()
+	if dataSet != nil {
+		displayDataSet(dataSet)
+	} else {
+		log.Printf("NO RESULT\n")
 	}
 }
 

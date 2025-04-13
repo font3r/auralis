@@ -1,12 +1,7 @@
 package main
 
 import (
-	"errors"
 	"log"
-	"strconv"
-	"strings"
-
-	"github.com/google/uuid"
 )
 
 func ExecuteQuery(raw string) (*DataSet, error) {
@@ -17,14 +12,14 @@ func ExecuteQuery(raw string) (*DataSet, error) {
 			Message: "missing query tokens"}
 	}
 
-	log.Printf("INFO: tokens %v\n", tokens)
+	log.Printf("INFO: lexer tokens %v\n", tokens)
 
 	query, err := ParseTokens(tokens)
 	if err != nil {
 		return &DataSet{}, err
 	}
 
-	log.Printf("INFO: parsed query %v\n", query)
+	log.Printf("INFO: parsed query %+v\n", query)
 
 	switch query := query.(type) {
 	case SelectQuery:
@@ -44,13 +39,24 @@ func handleSelectQuery(query SelectQuery) (*DataSet, error) {
 		return &DataSet{}, err
 	}
 
-	var dataSet *DataSet
-	if len(query.columns) == 1 && query.columns[0] == "*" {
-		dataSet, err = readAllFromTable(tableDescriptor)
-	} else {
-		dataSet, err = readColumnsFromTable(tableDescriptor, query.columns)
+	if len(query.dataColumns) == 1 && query.dataColumns[0] == "*" {
+		query.dataColumns = make([]string, 0)
+		for _, cd := range tableDescriptor.columnDescriptors {
+			query.dataColumns = append(query.dataColumns, cd.name)
+		}
 	}
 
+	// TODO: validate conditions, eg. data types
+	if len(query.conditions) > 0 {
+		for i := range query.conditions {
+			err := ConvertConditionType(tableDescriptor, &query.conditions[i])
+			if err != nil {
+				return &DataSet{}, err
+			}
+		}
+	}
+
+	dataSet, err := readFromTable(tableDescriptor, query)
 	if err != nil {
 		return &DataSet{}, err
 	}
@@ -70,32 +76,12 @@ func handleInsertQuery(query InsertQuery) (*DataSet, error) {
 	for _, valueRow := range query.values {
 		row := Row{cells: make([]any, 0, len(valueRow))}
 		for i, valueCell := range valueRow {
-			switch tableDescriptor.columnDescriptors[i].dataType {
-			case smallint:
-				{
-					v, err := strconv.Atoi(valueCell.(string))
-					if err != nil {
-						return nil, errors.New("invalid smallint cell value")
-					}
-
-					row.cells = append(row.cells, v)
-				}
-			case varchar:
-				{
-					row.cells = append(row.cells, strings.Trim(valueCell.(string), "'"))
-				}
-			case uniqueidentifier:
-				{
-					v, err := uuid.Parse(valueCell.(string))
-					if err != nil {
-						return nil, errors.New("invalid UUID cell value")
-					}
-
-					row.cells = append(row.cells, v)
-				}
-			default:
-				panic("unhandled type during insert query")
+			value, err := ConvertToConcreteType(tableDescriptor.columnDescriptors[i].dataType, valueCell)
+			if err != nil {
+				return &DataSet{}, err
 			}
+
+			row.cells = append(row.cells, value)
 		}
 
 		rows = append(rows, row)
@@ -112,22 +98,17 @@ func handleInsertQuery(query InsertQuery) (*DataSet, error) {
 func handleCreateTableQuery(query CreateTableQuery) (*DataSet, error) {
 	// create test table
 	err := cretateTable(TableDescriptor{
-		schemeTable: SchemeTable[string, string]{"dbo", "users"},
+		schemaTable: SchemaTable[string, string]{"dbo", "users"},
 		columnDescriptors: []ColumnDescriptor{
-			{
-				name:     "id",
-				dataType: uniqueidentifier,
-				position: 1,
-			},
 			{
 				name:     "name",
 				dataType: varchar,
-				position: 2,
+				position: 1,
 			},
 			{
 				name:     "age",
 				dataType: smallint,
-				position: 3,
+				position: 2,
 			},
 		},
 	})

@@ -18,7 +18,7 @@ func TestSelectParser(t *testing.T) {
 				{kind: symbol, value: "users"},
 			},
 			expectedCmd: Command{},
-			expectedErr: errors.New("missing keyword"),
+			expectedErr: errors.New("missing any keyword"),
 		},
 		"query without select keyword": {
 			tokens: []TokenLiteral{
@@ -27,7 +27,7 @@ func TestSelectParser(t *testing.T) {
 				{kind: symbol, value: "users"},
 			},
 			expectedCmd: Command{},
-			expectedErr: errors.New("missing keyword"),
+			expectedErr: errors.New("unsupported keyword"),
 		},
 		"select without specified columns": {
 			tokens: []TokenLiteral{
@@ -64,8 +64,8 @@ func TestSelectParser(t *testing.T) {
 				{kind: symbol, value: "users"},
 			},
 			expectedCmd: SelectQuery{
-				source:  SchemeTable[string, string]{"dbo", "users"},
-				columns: []string{"*"},
+				source:      SchemaTable[string, string]{"dbo", "users"},
+				dataColumns: []string{"*"},
 			},
 		},
 		"valid select specific columns from table": {
@@ -78,8 +78,29 @@ func TestSelectParser(t *testing.T) {
 				{kind: symbol, value: "users"},
 			},
 			expectedCmd: SelectQuery{
-				source:  SchemeTable[string, string]{"dbo", "users"},
-				columns: []string{"id1", "id2"},
+				source:      SchemaTable[string, string]{"dbo", "users"},
+				dataColumns: []string{"id1", "id2"},
+			},
+		},
+		"valid select specific columns with where clause": {
+			tokens: []TokenLiteral{
+				{kind: keyword, value: "select"},
+				{kind: symbol, value: "id1"},
+				{kind: comma, value: ","},
+				{kind: symbol, value: "id2"},
+				{kind: keyword, value: "from"},
+				{kind: symbol, value: "users"},
+				{kind: keyword, value: "where"},
+				{kind: symbol, value: "id1"},
+				{kind: equal, value: "="},
+				{kind: symbol, value: "1"},
+			},
+			expectedCmd: SelectQuery{
+				source:      SchemaTable[string, string]{"dbo", "users"},
+				dataColumns: []string{"id1", "id2"},
+				conditions: []Condition{
+					{target: "id1", sign: "=", value: "1"},
+				},
 			},
 		},
 	}
@@ -108,7 +129,7 @@ func TestInsertParser(t *testing.T) {
 				{kind: symbol, value: "users"},
 			},
 			expectedCmd: Command{},
-			expectedErr: errors.New("missing keyword"),
+			expectedErr: errors.New("missing any keyword"),
 		},
 		"query without insert keyword": {
 			tokens: []TokenLiteral{
@@ -117,7 +138,7 @@ func TestInsertParser(t *testing.T) {
 				{kind: symbol, value: "users"},
 			},
 			expectedCmd: Command{},
-			expectedErr: errors.New("missing keyword"),
+			expectedErr: errors.New("unsupported keyword"),
 		},
 		"query without into keyword": {
 			tokens: []TokenLiteral{
@@ -170,8 +191,8 @@ func TestInsertParser(t *testing.T) {
 				{kind: closingroundbracket, value: ")"},
 			},
 			expectedCmd: InsertQuery{
-				source:  SchemeTable[string, string]{"dbo", "users"},
-				columns: []string{"id"},
+				source:      SchemaTable[string, string]{"dbo", "users"},
+				dataColumns: []string{"id"},
 				values: [][]any{
 					{"1"},
 				},
@@ -192,8 +213,8 @@ func TestInsertParser(t *testing.T) {
 				{kind: closingroundbracket, value: ")"},
 			},
 			expectedCmd: InsertQuery{
-				source:  SchemeTable[string, string]{"dbo", "users"},
-				columns: []string{"name"},
+				source:      SchemaTable[string, string]{"dbo", "users"},
+				dataColumns: []string{"name"},
 				values: [][]any{
 					{"'example'"},
 				},

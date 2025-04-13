@@ -7,31 +7,32 @@ import (
 
 type Command struct{}
 
-type SchemeTable[T, U string] struct {
-	scheme T
+type SchemaTable[T, U string] struct {
+	schema T
 	name   U
 }
 
 type SelectQuery struct {
-	source  SchemeTable[string, string]
-	columns []string
+	source      SchemaTable[string, string]
+	dataColumns []string
+	conditions  []Condition
 }
 
 type InsertQuery struct {
-	source  SchemeTable[string, string]
-	columns []string // column names
-	values  [][]any  // column values
+	source      SchemaTable[string, string]
+	dataColumns []string // column names
+	values      [][]any  // column values
 }
 
 type CreateTableQuery struct {
-	source  SchemeTable[string, string]
+	source  SchemaTable[string, string]
 	columns map[string][]string
 }
 
 func ParseTokens(tokens []TokenLiteral) (any, error) {
 	valid := hasAnyKeyword(&tokens)
 	if !valid {
-		return Command{}, errors.New("missing keyword")
+		return Command{}, errors.New("missing any keyword")
 	}
 
 	// TODO: detect which query type to analyze
@@ -40,9 +41,11 @@ func ParseTokens(tokens []TokenLiteral) (any, error) {
 		return parseSelect(&tokens)
 	case "insert":
 		return parseInsert(&tokens)
+	case "create":
+		return parseCreate(&tokens)
 	}
 
-	return Command{}, errors.New("missing keyword")
+	return Command{}, errors.New("unsupported keyword")
 }
 
 func hasAnyKeyword(tokens *[]TokenLiteral) bool {
@@ -80,10 +83,10 @@ func parseSelect(tokens *[]TokenLiteral) (SelectQuery, error) {
 			break
 		}
 
-		q.columns = append(q.columns, v[i].value)
+		q.dataColumns = append(q.dataColumns, v[i].value)
 	}
 
-	if len(q.columns) == 0 {
+	if len(q.dataColumns) == 0 {
 		return SelectQuery{}, errors.New("missing columns")
 	}
 	// i is incremented by loop
@@ -101,10 +104,44 @@ func parseSelect(tokens *[]TokenLiteral) (SelectQuery, error) {
 
 	s := strings.Split(v[i].value, ".")
 	if len(s) == 1 {
-		q.source = SchemeTable[string, string]{"dbo", s[0]}
+		q.source = SchemaTable[string, string]{"dbo", s[0]}
 	} else {
-		q.source = SchemeTable[string, string]{s[0], s[1]}
+		q.source = SchemaTable[string, string]{s[0], s[1]}
 	}
+	i++
+
+	if i >= len(v) {
+		return q, nil
+	}
+
+	// where clause
+	if v[i].kind == keyword && v[i].value == "where" {
+		i++
+
+		condition := Condition{}
+		for ; i < len(v); i++ {
+			if v[i].kind == symbol {
+				if condition.sign == "" {
+					condition.target = v[i].value
+				} else {
+					condition.value = v[i].value
+					q.conditions = append(q.conditions, condition)
+				}
+				continue
+			}
+
+			if v[i].kind == equal ||
+				v[i].kind == notequal ||
+				v[i].kind == greater ||
+				v[i].kind == greaterorequal ||
+				v[i].kind == less ||
+				v[i].kind == lessorequal {
+				condition.sign = v[i].value
+				continue
+			}
+		}
+	}
+	i++
 
 	return q, nil
 }
@@ -132,9 +169,9 @@ func parseInsert(tokens *[]TokenLiteral) (InsertQuery, error) {
 	} else {
 		s := strings.Split(v[i].value, ".")
 		if len(s) == 1 {
-			q.source = SchemeTable[string, string]{"dbo", s[0]}
+			q.source = SchemaTable[string, string]{"dbo", s[0]}
 		} else {
-			q.source = SchemeTable[string, string]{s[0], s[1]}
+			q.source = SchemaTable[string, string]{s[0], s[1]}
 		}
 	}
 	i++
@@ -157,10 +194,10 @@ func parseInsert(tokens *[]TokenLiteral) (InsertQuery, error) {
 				break
 			}
 
-			q.columns = append(q.columns, v[i].value)
+			q.dataColumns = append(q.dataColumns, v[i].value)
 		}
 
-		if len(q.columns) == 0 {
+		if len(q.dataColumns) == 0 {
 			return InsertQuery{}, errors.New("invalid columns specification")
 		}
 		// i is incremented by loop
@@ -192,4 +229,9 @@ func parseInsert(tokens *[]TokenLiteral) (InsertQuery, error) {
 	}
 
 	return q, nil
+}
+
+func parseCreate(tokens *[]TokenLiteral) (CreateTableQuery, error) {
+	// TODO: temp passthrough to allow create hardcoded tables
+	return CreateTableQuery{}, nil
 }

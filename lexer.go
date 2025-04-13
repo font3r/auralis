@@ -7,35 +7,43 @@ import (
 
 type TokenKind int
 
-// TODO: add support for passing custom scheme eg. test.users instead of dbo.users
-
 const (
 	keyword TokenKind = iota
 	symbol
 	comma
 	openingroundbracket
 	closingroundbracket
+	equal
+	notequal
+	greater
+	greaterorequal
+	less
+	lessorequal
 )
+
+var keywords []string = []string{
+	"select",
+	"from",
+	"where",
+
+	"insert",
+	"into",
+	"values",
+
+	"create",
+	"table",
+}
 
 type TokenLiteral struct {
 	kind  TokenKind
 	value string
 }
 
-var keywords []string = []string{
-	"select",
-	"from",
-	"insert",
-	"into",
-	"values",
-}
-
 func Analyze(raw string) []TokenLiteral {
 	tokens := make([]TokenLiteral, 0)
 
 	l := 0
-	len := len(raw)
-	for r := range len {
+	for r := 0; r < len(raw); r++ {
 		switch raw[r] {
 		case byte(' '):
 			{
@@ -52,6 +60,45 @@ func Analyze(raw string) []TokenLiteral {
 				}
 
 				l = r + 1
+			}
+		case byte('='):
+			{
+				tokens = append(tokens, TokenLiteral{kind: equal, value: string('=')})
+				l = r + 1
+			}
+		case byte('>'):
+			{
+				if raw[r+1] == byte('=') {
+					tokens = append(tokens, TokenLiteral{kind: greaterorequal, value: string(">=")})
+					// r + 1 incremented by next loop iteration
+					l = r + 2
+					r += 1
+				} else {
+					tokens = append(tokens, TokenLiteral{kind: greater, value: string('>')})
+					l = r + 1
+				}
+			}
+		case byte('<'):
+			{
+				if raw[r+1] == byte('=') {
+					tokens = append(tokens, TokenLiteral{kind: lessorequal, value: string("<=")})
+					// r + 1 incremented by next loop iteration
+					l = r + 2
+					r += 1
+				} else {
+					tokens = append(tokens, TokenLiteral{kind: less, value: string('<')})
+					l = r + 1
+				}
+			}
+		case byte('!'):
+			{
+				if raw[r+1] == byte('=') {
+					tokens = append(tokens, TokenLiteral{kind: notequal, value: string("!=")})
+				}
+
+				// r + 1 incremented by next loop iteration
+				l = r + 2
+				r += 1
 			}
 		case byte('('):
 			{
@@ -86,8 +133,8 @@ func Analyze(raw string) []TokenLiteral {
 		}
 
 		// l-1 because we assign l = r + 1
-		if r == len-1 && r != l-1 {
-			tokens = append(tokens, TokenLiteral{kind: symbol, value: string(raw[l:len])})
+		if r == len(raw)-1 && r != l-1 {
+			tokens = append(tokens, TokenLiteral{kind: symbol, value: string(raw[l:])})
 		}
 	}
 

@@ -46,7 +46,7 @@ func cretateTable(td TableDescriptor) error {
 		return err
 	}
 
-	f, err := os.Create(getTableDiskPath(td.schemeTable))
+	f, err := os.Create(getTableDiskPath(td.schemaTable))
 	if err != nil {
 		return err
 	}
@@ -56,7 +56,8 @@ func cretateTable(td TableDescriptor) error {
 }
 
 func writeIntoTable(tableDescriptor TableDescriptor, dataSet DataSet) error {
-	f, err := os.OpenFile(getTableDiskPath(tableDescriptor.schemeTable), os.O_WRONLY|os.O_APPEND, 0600)
+	log.Printf("INFO: executing insert query %+v", dataSet)
+	f, err := os.OpenFile(getTableDiskPath(tableDescriptor.schemaTable), os.O_WRONLY|os.O_APPEND, 0600)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return ErrTableNotFound
@@ -64,6 +65,9 @@ func writeIntoTable(tableDescriptor TableDescriptor, dataSet DataSet) error {
 		return err
 	}
 	defer f.Close()
+
+	log.Printf("INFO: %s.%s table descriptor %+v\n", tableDescriptor.schemaTable.schema,
+		tableDescriptor.schemaTable.name, tableDescriptor)
 
 	w := bufio.NewWriter(f)
 
@@ -120,22 +124,9 @@ func writeIntoTable(tableDescriptor TableDescriptor, dataSet DataSet) error {
 	return nil
 }
 
-func readAllFromTable(tableDescriptor TableDescriptor) (*DataSet, error) {
-	columns := []string{}
-	for _, v := range tableDescriptor.columnDescriptors {
-		columns = append(columns, v.name)
-	}
-
-	return readFromTable(tableDescriptor, columns)
-}
-
-func readColumnsFromTable(tableDescriptor TableDescriptor,
-	columns []string) (*DataSet, error) {
-	return readFromTable(tableDescriptor, columns)
-}
-
-func readFromTable(tableDescriptor TableDescriptor, selectedColumns []string) (*DataSet, error) {
-	f, err := os.Open(getTableDiskPath(tableDescriptor.schemeTable))
+func readFromTable(tableDescriptor TableDescriptor, query SelectQuery) (*DataSet, error) {
+	log.Printf("INFO: executing select query %+v", query)
+	f, err := os.Open(getTableDiskPath(tableDescriptor.schemaTable))
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return nil, ErrTableNotFound
@@ -145,12 +136,12 @@ func readFromTable(tableDescriptor TableDescriptor, selectedColumns []string) (*
 	}
 	defer f.Close()
 
-	log.Printf("INFO: %s.%s table descriptor %+v\n", tableDescriptor.schemeTable.scheme,
-		tableDescriptor.schemeTable.name, tableDescriptor)
+	log.Printf("INFO: %s.%s table descriptor %+v\n", tableDescriptor.schemaTable.schema,
+		tableDescriptor.schemaTable.name, tableDescriptor)
 
 	dataSet := DataSet{}
 	for _, v := range tableDescriptor.columnDescriptors {
-		if slices.Contains(selectedColumns, v.name) {
+		if slices.Contains(query.dataColumns, v.name) {
 			dataSet.columnDescriptors = append(dataSet.columnDescriptors, v)
 		}
 	}
@@ -171,10 +162,11 @@ func readFromTable(tableDescriptor TableDescriptor, selectedColumns []string) (*
 
 		row := Row{}
 		rowOffset := 0
+		includeRow := true
 
 		var cellDataSize int
 		for _, cd := range tableDescriptor.columnDescriptors {
-			if !slices.Contains(selectedColumns, cd.name) {
+			if !slices.Contains(query.dataColumns, cd.name) {
 				rowOffset += getDataTypeByteSize(cd.dataType)
 				continue
 			}
@@ -185,16 +177,40 @@ func readFromTable(tableDescriptor TableDescriptor, selectedColumns []string) (*
 					cellDataSize = getDataTypeByteSize(smallint)
 					data := make([]byte, cellDataSize)
 					copy(data, rowBuf[rowOffset:rowOffset+cellDataSize])
+					value := int16(binary.BigEndian.Uint16(data))
 
-					row.cells = append(row.cells, int16(binary.BigEndian.Uint16(data)))
+					conditions := GetMatchingCondition(query.conditions, cd.name)
+					if len(conditions) > 0 {
+						// for now assume only one condition
+						if EvaluateIntCondition(conditions[0], value) {
+							row.cells = append(row.cells, value)
+						} else {
+							includeRow = false
+							break
+						}
+					} else {
+						row.cells = append(row.cells, value)
+					}
 				}
 			case varchar:
 				{
 					cellDataSize = getDataTypeByteSize(varchar)
 					data := make([]byte, cellDataSize)
 					copy(data, rowBuf[rowOffset:rowOffset+cellDataSize])
+					value := string(bytes.TrimRight(data, "\x00"))
 
-					row.cells = append(row.cells, string(bytes.TrimRight(data, "\x00")))
+					conditions := GetMatchingCondition(query.conditions, cd.name)
+					if len(conditions) > 0 {
+						// for now assume only one condition
+						if EvaluateStringCondition(conditions[0], value) {
+							row.cells = append(row.cells, value)
+						} else {
+							includeRow = false
+							break
+						}
+					} else {
+						row.cells = append(row.cells, value)
+					}
 				}
 			case uniqueidentifier:
 				{
@@ -212,7 +228,10 @@ func readFromTable(tableDescriptor TableDescriptor, selectedColumns []string) (*
 			rowOffset += cellDataSize
 		}
 
-		dataSet.rows = append(dataSet.rows, row)
+		if includeRow {
+			dataSet.rows = append(dataSet.rows, row)
+		}
+
 		fileOffset += int64(rowBuffSize)
 		clear(rowBuf)
 	}
@@ -230,8 +249,8 @@ func calculateRowBuffer(td TableDescriptor) int {
 	return size
 }
 
-func getTableDiskPath(source SchemeTable[string, string]) string {
-	return fmt.Sprintf("./data/%s.%s", source.scheme, source.name)
+func getTableDiskPath(source SchemaTable[string, string]) string {
+	return fmt.Sprintf("./data/%s.%s", source.schema, source.name)
 }
 
 func getDataTypeByteSize(dataType DataType) int {
