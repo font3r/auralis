@@ -64,7 +64,7 @@ func TestSelectParser(t *testing.T) {
 				{kind: symbol, value: "users"},
 			},
 			expectedCmd: SelectQuery{
-				source:      SchemeTable[string, string]{"dbo", "users"},
+				source:      SchemaTable[string, string]{"dbo", "users"},
 				dataColumns: []string{"*"},
 			},
 		},
@@ -78,7 +78,7 @@ func TestSelectParser(t *testing.T) {
 				{kind: symbol, value: "users"},
 			},
 			expectedCmd: SelectQuery{
-				source:      SchemeTable[string, string]{"dbo", "users"},
+				source:      SchemaTable[string, string]{"dbo", "users"},
 				dataColumns: []string{"id1", "id2"},
 			},
 		},
@@ -96,7 +96,7 @@ func TestSelectParser(t *testing.T) {
 				{kind: symbol, value: "1"},
 			},
 			expectedCmd: SelectQuery{
-				source:      SchemeTable[string, string]{"dbo", "users"},
+				source:      SchemaTable[string, string]{"dbo", "users"},
 				dataColumns: []string{"id1", "id2"},
 				conditions: []Condition{
 					{target: "id1", sign: "=", value: "1"},
@@ -191,7 +191,7 @@ func TestInsertParser(t *testing.T) {
 				{kind: closingroundbracket, value: ")"},
 			},
 			expectedCmd: InsertQuery{
-				source:      SchemeTable[string, string]{"dbo", "users"},
+				source:      SchemaTable[string, string]{"dbo", "users"},
 				dataColumns: []string{"id"},
 				values: [][]any{
 					{"1"},
@@ -213,7 +213,7 @@ func TestInsertParser(t *testing.T) {
 				{kind: closingroundbracket, value: ")"},
 			},
 			expectedCmd: InsertQuery{
-				source:      SchemeTable[string, string]{"dbo", "users"},
+				source:      SchemaTable[string, string]{"dbo", "users"},
 				dataColumns: []string{"name"},
 				values: [][]any{
 					{"'example'"},

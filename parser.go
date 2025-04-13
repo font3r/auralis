@@ -7,25 +7,25 @@ import (
 
 type Command struct{}
 
-type SchemeTable[T, U string] struct {
-	scheme T
+type SchemaTable[T, U string] struct {
+	schema T
 	name   U
 }
 
 type SelectQuery struct {
-	source      SchemeTable[string, string]
+	source      SchemaTable[string, string]
 	dataColumns []string
 	conditions  []Condition
 }
 
 type InsertQuery struct {
-	source      SchemeTable[string, string]
+	source      SchemaTable[string, string]
 	dataColumns []string // column names
 	values      [][]any  // column values
 }
 
 type CreateTableQuery struct {
-	source  SchemeTable[string, string]
+	source  SchemaTable[string, string]
 	columns map[string][]string
 }
 
@@ -104,9 +104,9 @@ func parseSelect(tokens *[]TokenLiteral) (SelectQuery, error) {
 
 	s := strings.Split(v[i].value, ".")
 	if len(s) == 1 {
-		q.source = SchemeTable[string, string]{"dbo", s[0]}
+		q.source = SchemaTable[string, string]{"dbo", s[0]}
 	} else {
-		q.source = SchemeTable[string, string]{s[0], s[1]}
+		q.source = SchemaTable[string, string]{s[0], s[1]}
 	}
 	i++
 
@@ -169,9 +169,9 @@ func parseInsert(tokens *[]TokenLiteral) (InsertQuery, error) {
 	} else {
 		s := strings.Split(v[i].value, ".")
 		if len(s) == 1 {
-			q.source = SchemeTable[string, string]{"dbo", s[0]}
+			q.source = SchemaTable[string, string]{"dbo", s[0]}
 		} else {
-			q.source = SchemeTable[string, string]{s[0], s[1]}
+			q.source = SchemaTable[string, string]{s[0], s[1]}
 		}
 	}
 	i++

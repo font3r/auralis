@@ -46,7 +46,7 @@ func cretateTable(td TableDescriptor) error {
 		return err
 	}
 
-	f, err := os.Create(getTableDiskPath(td.schemeTable))
+	f, err := os.Create(getTableDiskPath(td.schemaTable))
 	if err != nil {
 		return err
 	}
@@ -57,7 +57,7 @@ func cretateTable(td TableDescriptor) error {
 
 func writeIntoTable(tableDescriptor TableDescriptor, dataSet DataSet) error {
 	log.Printf("INFO: executing insert query %+v", dataSet)
-	f, err := os.OpenFile(getTableDiskPath(tableDescriptor.schemeTable), os.O_WRONLY|os.O_APPEND, 0600)
+	f, err := os.OpenFile(getTableDiskPath(tableDescriptor.schemaTable), os.O_WRONLY|os.O_APPEND, 0600)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return ErrTableNotFound
@@ -65,6 +65,9 @@ func writeIntoTable(tableDescriptor TableDescriptor, dataSet DataSet) error {
 		return err
 	}
 	defer f.Close()
+
+	log.Printf("INFO: %s.%s table descriptor %+v\n", tableDescriptor.schemaTable.schema,
+		tableDescriptor.schemaTable.name, tableDescriptor)
 
 	w := bufio.NewWriter(f)
 
@@ -123,7 +126,7 @@ func writeIntoTable(tableDescriptor TableDescriptor, dataSet DataSet) error {
 
 func readFromTable(tableDescriptor TableDescriptor, query SelectQuery) (*DataSet, error) {
 	log.Printf("INFO: executing select query %+v", query)
-	f, err := os.Open(getTableDiskPath(tableDescriptor.schemeTable))
+	f, err := os.Open(getTableDiskPath(tableDescriptor.schemaTable))
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return nil, ErrTableNotFound
@@ -133,8 +136,8 @@ func readFromTable(tableDescriptor TableDescriptor, query SelectQuery) (*DataSet
 	}
 	defer f.Close()
 
-	log.Printf("INFO: %s.%s table descriptor %+v\n", tableDescriptor.schemeTable.scheme,
-		tableDescriptor.schemeTable.name, tableDescriptor)
+	log.Printf("INFO: %s.%s table descriptor %+v\n", tableDescriptor.schemaTable.schema,
+		tableDescriptor.schemaTable.name, tableDescriptor)
 
 	dataSet := DataSet{}
 	for _, v := range tableDescriptor.columnDescriptors {
@@ -246,8 +249,8 @@ func calculateRowBuffer(td TableDescriptor) int {
 	return size
 }
 
-func getTableDiskPath(source SchemeTable[string, string]) string {
-	return fmt.Sprintf("./data/%s.%s", source.scheme, source.name)
+func getTableDiskPath(source SchemaTable[string, string]) string {
+	return fmt.Sprintf("./data/%s.%s", source.schema, source.name)
 }
 
 func getDataTypeByteSize(dataType DataType) int {

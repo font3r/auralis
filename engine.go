@@ -83,6 +83,8 @@ func handleInsertQuery(query InsertQuery) (*DataSet, error) {
 
 			row.cells = append(row.cells, value)
 		}
+
+		rows = append(rows, row)
 	}
 
 	err = writeIntoTable(tableDescriptor, DataSet{
@@ -96,7 +98,7 @@ func handleInsertQuery(query InsertQuery) (*DataSet, error) {
 func handleCreateTableQuery(query CreateTableQuery) (*DataSet, error) {
 	// create test table
 	err := cretateTable(TableDescriptor{
-		schemeTable: SchemeTable[string, string]{"dbo", "users"},
+		schemaTable: SchemaTable[string, string]{"dbo", "users"},
 		columnDescriptors: []ColumnDescriptor{
 			{
 				name:     "name",
