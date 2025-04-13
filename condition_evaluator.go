@@ -50,6 +50,19 @@ func EvaluateIntCondition[V int16 | int32 | int64](cond Condition, value V) bool
 	}
 }
 
+func EvaluateStringCondition[V string](cond Condition, value V) bool {
+	log.Printf("INFO: evaluating condition %+v against %v", cond, value)
+
+	switch cond.sign {
+	case "=":
+		return value == V(cond.value.(string))
+	case "!=":
+		return value != V(cond.value.(string))
+	default:
+		panic("invalid condition sign")
+	}
+}
+
 func filter[T any](items []T, predicate func(T) bool) []T {
 	var result []T
 	for _, item := range items {

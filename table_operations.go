@@ -181,7 +181,6 @@ func readFromTable(tableDescriptor TableDescriptor, query SelectQuery) (*DataSet
 						// for now assume only one condition
 						if EvaluateIntCondition(conditions[0], value) {
 							row.cells = append(row.cells, value)
-							continue
 						} else {
 							includeRow = false
 							break
@@ -195,8 +194,20 @@ func readFromTable(tableDescriptor TableDescriptor, query SelectQuery) (*DataSet
 					cellDataSize = getDataTypeByteSize(varchar)
 					data := make([]byte, cellDataSize)
 					copy(data, rowBuf[rowOffset:rowOffset+cellDataSize])
+					value := string(bytes.TrimRight(data, "\x00"))
 
-					row.cells = append(row.cells, string(bytes.TrimRight(data, "\x00")))
+					conditions := GetMatchingCondition(query.conditions, cd.name)
+					if len(conditions) > 0 {
+						// for now assume only one condition
+						if EvaluateStringCondition(conditions[0], value) {
+							row.cells = append(row.cells, value)
+						} else {
+							includeRow = false
+							break
+						}
+					} else {
+						row.cells = append(row.cells, value)
+					}
 				}
 			case uniqueidentifier:
 				{
