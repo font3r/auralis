@@ -19,7 +19,7 @@ func ExecuteQuery(raw string) (*DataSet, error) {
 		return &DataSet{}, err
 	}
 
-	log.Printf("INFO: parsed query %v\n", query)
+	log.Printf("INFO: parsed query %+v\n", query)
 
 	switch query := query.(type) {
 	case SelectQuery:

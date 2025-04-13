@@ -159,6 +159,7 @@ func readFromTable(tableDescriptor TableDescriptor, query SelectQuery) (*DataSet
 
 		row := Row{}
 		rowOffset := 0
+		includeRow := true
 
 		var cellDataSize int
 		for _, cd := range tableDescriptor.columnDescriptors {
@@ -181,6 +182,9 @@ func readFromTable(tableDescriptor TableDescriptor, query SelectQuery) (*DataSet
 						if EvaluateIntCondition(conditions[0], value) {
 							row.cells = append(row.cells, value)
 							continue
+						} else {
+							includeRow = false
+							break
 						}
 					} else {
 						row.cells = append(row.cells, value)
@@ -210,7 +214,10 @@ func readFromTable(tableDescriptor TableDescriptor, query SelectQuery) (*DataSet
 			rowOffset += cellDataSize
 		}
 
-		dataSet.rows = append(dataSet.rows, row)
+		if includeRow {
+			dataSet.rows = append(dataSet.rows, row)
+		}
+
 		fileOffset += int64(rowBuffSize)
 		clear(rowBuf)
 	}

@@ -18,7 +18,7 @@ func TestSelectParser(t *testing.T) {
 				{kind: symbol, value: "users"},
 			},
 			expectedCmd: Command{},
-			expectedErr: errors.New("missing keyword"),
+			expectedErr: errors.New("missing any keyword"),
 		},
 		"query without select keyword": {
 			tokens: []TokenLiteral{
@@ -27,7 +27,7 @@ func TestSelectParser(t *testing.T) {
 				{kind: symbol, value: "users"},
 			},
 			expectedCmd: Command{},
-			expectedErr: errors.New("missing keyword"),
+			expectedErr: errors.New("unsupported keyword"),
 		},
 		"select without specified columns": {
 			tokens: []TokenLiteral{
@@ -129,7 +129,7 @@ func TestInsertParser(t *testing.T) {
 				{kind: symbol, value: "users"},
 			},
 			expectedCmd: Command{},
-			expectedErr: errors.New("missing keyword"),
+			expectedErr: errors.New("missing any keyword"),
 		},
 		"query without insert keyword": {
 			tokens: []TokenLiteral{
@@ -138,7 +138,7 @@ func TestInsertParser(t *testing.T) {
 				{kind: symbol, value: "users"},
 			},
 			expectedCmd: Command{},
-			expectedErr: errors.New("missing keyword"),
+			expectedErr: errors.New("unsupported keyword"),
 		},
 		"query without into keyword": {
 			tokens: []TokenLiteral{

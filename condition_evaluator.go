@@ -1,5 +1,7 @@
 package main
 
+import "log"
+
 type Condition struct {
 	target string
 	sign   string
@@ -28,6 +30,8 @@ func GetMatchingCondition(conditions []Condition, target string) []Condition {
 }
 
 func EvaluateIntCondition[V int16 | int32 | int64](cond Condition, value V) bool {
+	log.Printf("INFO: evaluating condition %+v against %v", cond, value)
+
 	switch cond.sign {
 	case "=":
 		return value == V(cond.value.(int))

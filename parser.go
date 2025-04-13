@@ -130,8 +130,13 @@ func parseSelect(tokens *[]TokenLiteral) (SelectQuery, error) {
 				continue
 			}
 
-			if v[i].kind == equal {
-				condition.sign = "="
+			if v[i].kind == equal ||
+				v[i].kind == notequal ||
+				v[i].kind == greater ||
+				v[i].kind == greaterorequal ||
+				v[i].kind == less ||
+				v[i].kind == lessorequal {
+				condition.sign = v[i].value
 				continue
 			}
 		}

@@ -96,6 +96,71 @@ func TestSelectStatementLexer(t *testing.T) {
 				{kind: symbol, value: "1"},
 			},
 		},
+		{
+			raw: "SELECT * FROM users WHERE id != 1",
+			expected: []TokenLiteral{
+				{kind: keyword, value: "select"},
+				{kind: symbol, value: "*"},
+				{kind: keyword, value: "from"},
+				{kind: symbol, value: "users"},
+				{kind: keyword, value: "where"},
+				{kind: symbol, value: "id"},
+				{kind: notequal, value: "!="},
+				{kind: symbol, value: "1"},
+			},
+		},
+		{
+			raw: "SELECT * FROM users WHERE id < 1",
+			expected: []TokenLiteral{
+				{kind: keyword, value: "select"},
+				{kind: symbol, value: "*"},
+				{kind: keyword, value: "from"},
+				{kind: symbol, value: "users"},
+				{kind: keyword, value: "where"},
+				{kind: symbol, value: "id"},
+				{kind: less, value: "<"},
+				{kind: symbol, value: "1"},
+			},
+		},
+		{
+			raw: "SELECT * FROM users WHERE id > 1",
+			expected: []TokenLiteral{
+				{kind: keyword, value: "select"},
+				{kind: symbol, value: "*"},
+				{kind: keyword, value: "from"},
+				{kind: symbol, value: "users"},
+				{kind: keyword, value: "where"},
+				{kind: symbol, value: "id"},
+				{kind: greater, value: ">"},
+				{kind: symbol, value: "1"},
+			},
+		},
+		{
+			raw: "SELECT * FROM users WHERE id <= 1",
+			expected: []TokenLiteral{
+				{kind: keyword, value: "select"},
+				{kind: symbol, value: "*"},
+				{kind: keyword, value: "from"},
+				{kind: symbol, value: "users"},
+				{kind: keyword, value: "where"},
+				{kind: symbol, value: "id"},
+				{kind: lessorequal, value: "<="},
+				{kind: symbol, value: "1"},
+			},
+		},
+		{
+			raw: "SELECT * FROM users WHERE id >= 1",
+			expected: []TokenLiteral{
+				{kind: keyword, value: "select"},
+				{kind: symbol, value: "*"},
+				{kind: keyword, value: "from"},
+				{kind: symbol, value: "users"},
+				{kind: keyword, value: "where"},
+				{kind: symbol, value: "id"},
+				{kind: greaterorequal, value: ">="},
+				{kind: symbol, value: "1"},
+			},
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.raw, func(t *testing.T) {
