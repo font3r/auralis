@@ -7,27 +7,31 @@ import (
 
 type TokenKind int
 
-// TODO: add support for passing custom scheme eg. test.users instead of dbo.users
-
 const (
 	keyword TokenKind = iota
 	symbol
 	comma
 	openingroundbracket
 	closingroundbracket
+	equal
 )
-
-type TokenLiteral struct {
-	kind  TokenKind
-	value string
-}
 
 var keywords []string = []string{
 	"select",
 	"from",
+	"where",
+
 	"insert",
 	"into",
 	"values",
+
+	"create",
+	"table",
+}
+
+type TokenLiteral struct {
+	kind  TokenKind
+	value string
 }
 
 func Analyze(raw string) []TokenLiteral {
@@ -51,6 +55,11 @@ func Analyze(raw string) []TokenLiteral {
 					tokens = append(tokens, TokenLiteral{kind: symbol, value: frag})
 				}
 
+				l = r + 1
+			}
+		case byte('='):
+			{
+				tokens = append(tokens, TokenLiteral{kind: equal, value: string('=')})
 				l = r + 1
 			}
 		case byte('('):

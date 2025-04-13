@@ -56,6 +56,7 @@ func cretateTable(td TableDescriptor) error {
 }
 
 func writeIntoTable(tableDescriptor TableDescriptor, dataSet DataSet) error {
+	log.Printf("INFO: executing insert query %+v", dataSet)
 	f, err := os.OpenFile(getTableDiskPath(tableDescriptor.schemeTable), os.O_WRONLY|os.O_APPEND, 0600)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -120,21 +121,8 @@ func writeIntoTable(tableDescriptor TableDescriptor, dataSet DataSet) error {
 	return nil
 }
 
-func readAllFromTable(tableDescriptor TableDescriptor) (*DataSet, error) {
-	columns := []string{}
-	for _, v := range tableDescriptor.columnDescriptors {
-		columns = append(columns, v.name)
-	}
-
-	return readFromTable(tableDescriptor, columns)
-}
-
-func readColumnsFromTable(tableDescriptor TableDescriptor,
-	columns []string) (*DataSet, error) {
-	return readFromTable(tableDescriptor, columns)
-}
-
-func readFromTable(tableDescriptor TableDescriptor, selectedColumns []string) (*DataSet, error) {
+func readFromTable(tableDescriptor TableDescriptor, query SelectQuery) (*DataSet, error) {
+	log.Printf("INFO: executing select query %+v", query)
 	f, err := os.Open(getTableDiskPath(tableDescriptor.schemeTable))
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -150,7 +138,7 @@ func readFromTable(tableDescriptor TableDescriptor, selectedColumns []string) (*
 
 	dataSet := DataSet{}
 	for _, v := range tableDescriptor.columnDescriptors {
-		if slices.Contains(selectedColumns, v.name) {
+		if slices.Contains(query.dataColumns, v.name) {
 			dataSet.columnDescriptors = append(dataSet.columnDescriptors, v)
 		}
 	}
@@ -174,7 +162,7 @@ func readFromTable(tableDescriptor TableDescriptor, selectedColumns []string) (*
 
 		var cellDataSize int
 		for _, cd := range tableDescriptor.columnDescriptors {
-			if !slices.Contains(selectedColumns, cd.name) {
+			if !slices.Contains(query.dataColumns, cd.name) {
 				rowOffset += getDataTypeByteSize(cd.dataType)
 				continue
 			}

@@ -17,7 +17,7 @@ func ExecuteQuery(raw string) (*DataSet, error) {
 			Message: "missing query tokens"}
 	}
 
-	log.Printf("INFO: tokens %v\n", tokens)
+	log.Printf("INFO: lexer tokens %v\n", tokens)
 
 	query, err := ParseTokens(tokens)
 	if err != nil {
@@ -44,13 +44,18 @@ func handleSelectQuery(query SelectQuery) (*DataSet, error) {
 		return &DataSet{}, err
 	}
 
-	var dataSet *DataSet
-	if len(query.columns) == 1 && query.columns[0] == "*" {
-		dataSet, err = readAllFromTable(tableDescriptor)
-	} else {
-		dataSet, err = readColumnsFromTable(tableDescriptor, query.columns)
+	if len(query.dataColumns) == 1 && query.dataColumns[0] == "*" {
+		query.dataColumns = make([]string, 0)
+		for _, cd := range tableDescriptor.columnDescriptors {
+			query.dataColumns = append(query.dataColumns, cd.name)
+		}
 	}
 
+	// TODO: validate conditions, eg. data types
+	v, _ := strconv.Atoi(query.conditions[0].value.(string))
+	query.conditions[0].value = v
+
+	dataSet, err := readFromTable(tableDescriptor, query)
 	if err != nil {
 		return &DataSet{}, err
 	}

@@ -12,15 +12,22 @@ type SchemeTable[T, U string] struct {
 	name   U
 }
 
+type Condition struct {
+	target string
+	sign   string
+	value  any
+}
+
 type SelectQuery struct {
-	source  SchemeTable[string, string]
-	columns []string
+	source      SchemeTable[string, string]
+	dataColumns []string
+	conditions  []Condition
 }
 
 type InsertQuery struct {
-	source  SchemeTable[string, string]
-	columns []string // column names
-	values  [][]any  // column values
+	source      SchemeTable[string, string]
+	dataColumns []string // column names
+	values      [][]any  // column values
 }
 
 type CreateTableQuery struct {
@@ -31,7 +38,7 @@ type CreateTableQuery struct {
 func ParseTokens(tokens []TokenLiteral) (any, error) {
 	valid := hasAnyKeyword(&tokens)
 	if !valid {
-		return Command{}, errors.New("missing keyword")
+		return Command{}, errors.New("missing any keyword")
 	}
 
 	// TODO: detect which query type to analyze
@@ -40,9 +47,11 @@ func ParseTokens(tokens []TokenLiteral) (any, error) {
 		return parseSelect(&tokens)
 	case "insert":
 		return parseInsert(&tokens)
+	case "create":
+		return parseCreate(&tokens)
 	}
 
-	return Command{}, errors.New("missing keyword")
+	return Command{}, errors.New("unsupported keyword")
 }
 
 func hasAnyKeyword(tokens *[]TokenLiteral) bool {
@@ -80,10 +89,10 @@ func parseSelect(tokens *[]TokenLiteral) (SelectQuery, error) {
 			break
 		}
 
-		q.columns = append(q.columns, v[i].value)
+		q.dataColumns = append(q.dataColumns, v[i].value)
 	}
 
-	if len(q.columns) == 0 {
+	if len(q.dataColumns) == 0 {
 		return SelectQuery{}, errors.New("missing columns")
 	}
 	// i is incremented by loop
@@ -157,10 +166,10 @@ func parseInsert(tokens *[]TokenLiteral) (InsertQuery, error) {
 				break
 			}
 
-			q.columns = append(q.columns, v[i].value)
+			q.dataColumns = append(q.dataColumns, v[i].value)
 		}
 
-		if len(q.columns) == 0 {
+		if len(q.dataColumns) == 0 {
 			return InsertQuery{}, errors.New("invalid columns specification")
 		}
 		// i is incremented by loop
@@ -192,4 +201,9 @@ func parseInsert(tokens *[]TokenLiteral) (InsertQuery, error) {
 	}
 
 	return q, nil
+}
+
+func parseCreate(tokens *[]TokenLiteral) (CreateTableQuery, error) {
+	// TODO: temp passthrough to allow create hardcoded tables
+	return CreateTableQuery{}, nil
 }

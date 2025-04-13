@@ -102,19 +102,22 @@ func initDatabaseInternalStructure() {
 }
 
 func getAuralisTables() (*DataSet, error) {
-	return readFromTable(auralisTablesTableDescriptor,
-		[]string{"database_name", "table_schema", "table_name"})
+	return readFromTable(auralisTablesTableDescriptor, SelectQuery{
+		dataColumns: []string{"database_name", "table_schema", "table_name"},
+	})
 }
 
 func getAuralisColumns() (*DataSet, error) {
-	return readFromTable(auralisColumnsTableDescriptor,
-		[]string{"table_schema", "table_name", "column_name", "data_type", "position"})
+	return readFromTable(auralisColumnsTableDescriptor, SelectQuery{
+		dataColumns: []string{"table_schema", "table_name", "column_name", "data_type", "position"},
+	})
 }
 
 // TODO: implement WHERE clause for table_name/scheme
 func getTableDescriptor(source SchemeTable[string, string]) (TableDescriptor, error) {
-	dataSet, err := readFromTable(auralisColumnsTableDescriptor,
-		[]string{"table_schema", "table_name", "column_name", "data_type", "position"})
+	dataSet, err := readFromTable(auralisColumnsTableDescriptor, SelectQuery{
+		dataColumns: []string{"table_schema", "table_name", "column_name", "data_type", "position"},
+	})
 	if err != nil {
 		return TableDescriptor{}, err
 	}

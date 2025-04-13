@@ -64,8 +64,8 @@ func TestSelectParser(t *testing.T) {
 				{kind: symbol, value: "users"},
 			},
 			expectedCmd: SelectQuery{
-				source:  SchemeTable[string, string]{"dbo", "users"},
-				columns: []string{"*"},
+				source:      SchemeTable[string, string]{"dbo", "users"},
+				dataColumns: []string{"*"},
 			},
 		},
 		"valid select specific columns from table": {
@@ -78,8 +78,29 @@ func TestSelectParser(t *testing.T) {
 				{kind: symbol, value: "users"},
 			},
 			expectedCmd: SelectQuery{
-				source:  SchemeTable[string, string]{"dbo", "users"},
-				columns: []string{"id1", "id2"},
+				source:      SchemeTable[string, string]{"dbo", "users"},
+				dataColumns: []string{"id1", "id2"},
+			},
+		},
+		"valid select specific columns with where clause": {
+			tokens: []TokenLiteral{
+				{kind: keyword, value: "select"},
+				{kind: symbol, value: "id1"},
+				{kind: comma, value: ","},
+				{kind: symbol, value: "id2"},
+				{kind: keyword, value: "from"},
+				{kind: symbol, value: "users"},
+				{kind: keyword, value: "where"},
+				{kind: symbol, value: "id1"},
+				{kind: equal, value: "="},
+				{kind: symbol, value: "1"},
+			},
+			expectedCmd: SelectQuery{
+				source:      SchemeTable[string, string]{"dbo", "users"},
+				dataColumns: []string{"id1", "id2"},
+				conditions: []Condition{
+					{target: "id1", sign: "=", value: "1"},
+				},
 			},
 		},
 	}
@@ -170,8 +191,8 @@ func TestInsertParser(t *testing.T) {
 				{kind: closingroundbracket, value: ")"},
 			},
 			expectedCmd: InsertQuery{
-				source:  SchemeTable[string, string]{"dbo", "users"},
-				columns: []string{"id"},
+				source:      SchemeTable[string, string]{"dbo", "users"},
+				dataColumns: []string{"id"},
 				values: [][]any{
 					{"1"},
 				},
@@ -192,8 +213,8 @@ func TestInsertParser(t *testing.T) {
 				{kind: closingroundbracket, value: ")"},
 			},
 			expectedCmd: InsertQuery{
-				source:  SchemeTable[string, string]{"dbo", "users"},
-				columns: []string{"name"},
+				source:      SchemeTable[string, string]{"dbo", "users"},
+				dataColumns: []string{"name"},
 				values: [][]any{
 					{"'example'"},
 				},
