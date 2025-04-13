@@ -173,8 +173,18 @@ func readFromTable(tableDescriptor TableDescriptor, query SelectQuery) (*DataSet
 					cellDataSize = getDataTypeByteSize(smallint)
 					data := make([]byte, cellDataSize)
 					copy(data, rowBuf[rowOffset:rowOffset+cellDataSize])
+					value := int16(binary.BigEndian.Uint16(data))
 
-					row.cells = append(row.cells, int16(binary.BigEndian.Uint16(data)))
+					conditions := GetMatchingCondition(query.conditions, cd.name)
+					if len(conditions) > 0 {
+						// for now assume only one condition
+						if EvaluateIntCondition(conditions[0], value) {
+							row.cells = append(row.cells, value)
+							continue
+						}
+					} else {
+						row.cells = append(row.cells, value)
+					}
 				}
 			case varchar:
 				{

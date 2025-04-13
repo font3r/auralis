@@ -12,12 +12,6 @@ type SchemeTable[T, U string] struct {
 	name   U
 }
 
-type Condition struct {
-	target string
-	sign   string
-	value  any
-}
-
 type SelectQuery struct {
 	source      SchemeTable[string, string]
 	dataColumns []string
@@ -114,6 +108,35 @@ func parseSelect(tokens *[]TokenLiteral) (SelectQuery, error) {
 	} else {
 		q.source = SchemeTable[string, string]{s[0], s[1]}
 	}
+	i++
+
+	if i >= len(v) {
+		return q, nil
+	}
+
+	// where clause
+	if v[i].kind == keyword && v[i].value == "where" {
+		i++
+
+		condition := Condition{}
+		for ; i < len(v); i++ {
+			if v[i].kind == symbol {
+				if condition.sign == "" {
+					condition.target = v[i].value
+				} else {
+					condition.value = v[i].value
+					q.conditions = append(q.conditions, condition)
+				}
+				continue
+			}
+
+			if v[i].kind == equal {
+				condition.sign = "="
+				continue
+			}
+		}
+	}
+	i++
 
 	return q, nil
 }

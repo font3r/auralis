@@ -1,12 +1,7 @@
 package main
 
 import (
-	"errors"
 	"log"
-	"strconv"
-	"strings"
-
-	"github.com/google/uuid"
 )
 
 func ExecuteQuery(raw string) (*DataSet, error) {
@@ -52,8 +47,14 @@ func handleSelectQuery(query SelectQuery) (*DataSet, error) {
 	}
 
 	// TODO: validate conditions, eg. data types
-	v, _ := strconv.Atoi(query.conditions[0].value.(string))
-	query.conditions[0].value = v
+	if len(query.conditions) > 0 {
+		for i := range query.conditions {
+			err := ConvertConditionType(tableDescriptor, &query.conditions[i])
+			if err != nil {
+				return &DataSet{}, err
+			}
+		}
+	}
 
 	dataSet, err := readFromTable(tableDescriptor, query)
 	if err != nil {
@@ -75,35 +76,13 @@ func handleInsertQuery(query InsertQuery) (*DataSet, error) {
 	for _, valueRow := range query.values {
 		row := Row{cells: make([]any, 0, len(valueRow))}
 		for i, valueCell := range valueRow {
-			switch tableDescriptor.columnDescriptors[i].dataType {
-			case smallint:
-				{
-					v, err := strconv.Atoi(valueCell.(string))
-					if err != nil {
-						return nil, errors.New("invalid smallint cell value")
-					}
-
-					row.cells = append(row.cells, v)
-				}
-			case varchar:
-				{
-					row.cells = append(row.cells, strings.Trim(valueCell.(string), "'"))
-				}
-			case uniqueidentifier:
-				{
-					v, err := uuid.Parse(valueCell.(string))
-					if err != nil {
-						return nil, errors.New("invalid UUID cell value")
-					}
-
-					row.cells = append(row.cells, v)
-				}
-			default:
-				panic("unhandled type during insert query")
+			value, err := ConvertToConcreteType(tableDescriptor.columnDescriptors[i].dataType, valueCell)
+			if err != nil {
+				return &DataSet{}, err
 			}
-		}
 
-		rows = append(rows, row)
+			row.cells = append(row.cells, value)
+		}
 	}
 
 	err = writeIntoTable(tableDescriptor, DataSet{
@@ -120,19 +99,14 @@ func handleCreateTableQuery(query CreateTableQuery) (*DataSet, error) {
 		schemeTable: SchemeTable[string, string]{"dbo", "users"},
 		columnDescriptors: []ColumnDescriptor{
 			{
-				name:     "id",
-				dataType: uniqueidentifier,
-				position: 1,
-			},
-			{
 				name:     "name",
 				dataType: varchar,
-				position: 2,
+				position: 1,
 			},
 			{
 				name:     "age",
 				dataType: smallint,
-				position: 3,
+				position: 2,
 			},
 		},
 	})
