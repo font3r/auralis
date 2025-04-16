@@ -22,12 +22,12 @@ func ConvertToConcreteType(sourceType DataType, value any) (any, error) {
 	switch sourceType {
 	case smallint:
 		{
-			v, err := strconv.Atoi(value.(string))
+			v, err := strconv.ParseInt(value.(string), 10, 16)
 			if err != nil {
 				return nil, ErrSmallintTypeConversion
 			}
 
-			return v, nil
+			return int16(v), nil
 		}
 	case varchar:
 		{
