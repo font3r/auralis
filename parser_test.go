@@ -234,3 +234,67 @@ func TestInsertParser(t *testing.T) {
 		})
 	}
 }
+
+func TestCreateParser(t *testing.T) {
+	testCases := map[string]struct {
+		tokens      []TokenLiteral
+		expectedCmd any
+		expectedErr error
+	}{
+		"query without table keyword": {
+			tokens: []TokenLiteral{
+				{kind: keyword, value: "create"},
+				{kind: symbol, value: "test"},
+				{kind: symbol, value: "users"},
+			},
+			expectedCmd: CreateTableQuery{},
+			expectedErr: errors.New("missing table keyword"),
+		},
+		"create without table name": {
+			tokens: []TokenLiteral{
+				{kind: keyword, value: "create"},
+				{kind: keyword, value: "table"},
+				{kind: openingroundbracket, value: "("},
+				{kind: symbol, value: "age"},
+				{kind: symbol, value: "smallint"},
+				{kind: closingroundbracket, value: ")"},
+			},
+			expectedCmd: CreateTableQuery{},
+			expectedErr: errors.New("missing table name"),
+		},
+		"create table users with two columns": {
+			tokens: []TokenLiteral{
+				{kind: keyword, value: "create"},
+				{kind: keyword, value: "table"},
+				{kind: symbol, value: "users"},
+				{kind: openingroundbracket, value: "("},
+				{kind: symbol, value: "age"},
+				{kind: symbol, value: "smallint"},
+				{kind: comma, value: ","},
+				{kind: symbol, value: "name"},
+				{kind: symbol, value: "varchar"},
+				{kind: symbol, value: "not"},
+				{kind: symbol, value: "null"},
+				{kind: closingroundbracket, value: ")"},
+			},
+			expectedCmd: CreateTableQuery{
+				source: SchemaTable[string, string]{"dbo", "users"},
+				columns: map[string][]string{
+					"age":  {"smallint"},
+					"name": {"varchar", "not", "null"},
+				},
+			},
+		},
+	}
+	for test, tC := range testCases {
+		t.Run(test, func(t *testing.T) {
+			cmd, err := ParseTokens(tC.tokens)
+			// TODO: compare constant errors
+			if err != nil && err.Error() != tC.expectedErr.Error() {
+				t.Errorf("\nexp %+v\ngot %+v", tC.expectedErr, err)
+			} else if !reflect.DeepEqual(cmd, tC.expectedCmd) {
+				t.Errorf("\nexp %+v\ngot %+v", tC.expectedCmd, cmd)
+			}
+		})
+	}
+}

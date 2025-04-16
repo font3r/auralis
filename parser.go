@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"log"
 	"strings"
 )
 
@@ -104,7 +105,7 @@ func parseSelect(tokens *[]TokenLiteral) (SelectQuery, error) {
 
 	s := strings.Split(v[i].value, ".")
 	if len(s) == 1 {
-		q.source = SchemaTable[string, string]{"dbo", s[0]}
+		q.source = SchemaTable[string, string]{defaultScheme, s[0]}
 	} else {
 		q.source = SchemaTable[string, string]{s[0], s[1]}
 	}
@@ -169,7 +170,7 @@ func parseInsert(tokens *[]TokenLiteral) (InsertQuery, error) {
 	} else {
 		s := strings.Split(v[i].value, ".")
 		if len(s) == 1 {
-			q.source = SchemaTable[string, string]{"dbo", s[0]}
+			q.source = SchemaTable[string, string]{defaultScheme, s[0]}
 		} else {
 			q.source = SchemaTable[string, string]{s[0], s[1]}
 		}
@@ -232,6 +233,70 @@ func parseInsert(tokens *[]TokenLiteral) (InsertQuery, error) {
 }
 
 func parseCreate(tokens *[]TokenLiteral) (CreateTableQuery, error) {
-	// TODO: temp passthrough to allow create hardcoded tables
-	return CreateTableQuery{}, nil
+	v := *tokens
+	q := CreateTableQuery{}
+	i := 0
+
+	// create
+	if i >= len(v) || v[i].kind != keyword || v[i].value != "create" {
+		return CreateTableQuery{}, errors.New("missing create keyword")
+	}
+	i++
+
+	// table
+	if i >= len(v) || v[i].kind != keyword || v[i].value != "table" {
+		return CreateTableQuery{}, errors.New("missing table keyword")
+	}
+	i++
+
+	// table name
+	if i >= len(v) || v[i].kind != symbol {
+		return CreateTableQuery{}, errors.New("missing table name")
+	} else {
+		s := strings.Split(v[i].value, ".")
+		if len(s) == 1 {
+			q.source = SchemaTable[string, string]{defaultScheme, s[0]}
+		} else {
+			q.source = SchemaTable[string, string]{s[0], s[1]}
+		}
+	}
+	i++
+
+	// csv columns or skip
+	q.columns = make(map[string][]string)
+	columnsAttributes := []string{}
+	for ; i < len(v); i++ {
+		if v[i].kind == openingroundbracket {
+			continue
+		}
+
+		if v[i].kind == comma {
+			attributes := make([]string, len(columnsAttributes[1:]))
+			copy(attributes, columnsAttributes[1:])
+			q.columns[columnsAttributes[0]] = attributes
+			columnsAttributes = []string{}
+			continue
+		}
+
+		if v[i].kind != symbol {
+			if v[i].kind == closingroundbracket {
+				attributes := make([]string, len(columnsAttributes[1:]))
+				copy(attributes, columnsAttributes[1:])
+				q.columns[columnsAttributes[0]] = attributes
+				i++
+			}
+			break
+		}
+
+		columnsAttributes = append(columnsAttributes, v[i].value)
+	}
+
+	log.Println(q)
+
+	if len(q.columns) == 0 {
+		return CreateTableQuery{}, errors.New("invalid columns specification")
+	}
+	// i is incremented by loop
+
+	return q, nil
 }
