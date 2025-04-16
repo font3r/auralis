@@ -4,6 +4,8 @@ import (
 	"log"
 )
 
+const defaultScheme = "dbo"
+
 func ExecuteQuery(raw string) (*DataSet, error) {
 	tokens := Analyze(raw)
 	if len(tokens) <= 0 {

@@ -106,7 +106,6 @@ func initDatabaseInternalStructure() {
 	}
 }
 
-// TODO: implement WHERE clause for table_name/schema
 func getTableDescriptor(source SchemaTable[string, string]) (TableDescriptor, error) {
 	dataSet, err := readFromTable(auralisColumnsTableDescriptor, SelectQuery{
 		source:      SchemaTable[string, string]{internalSchema, tables},
