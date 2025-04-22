@@ -23,19 +23,8 @@ type Row struct {
 	cells []any
 }
 
-type DataType string
-
 var (
 	ErrTableNotFound = AuraError{Code: "TABLE_NOT_FOUND", Message: "table not found"}
-)
-
-const (
-	smallint         DataType = "smallint" // 2B
-	integer          DataType = "integer"  // 4
-	bigint           DataType = "bigint"   // 8
-	varchar          DataType = "varchar"
-	uniqueidentifier DataType = "uniqueidentifier" // 16
-	boolean          DataType = "boolean"          // 1
 )
 
 const terminationByte = byte(10)
@@ -79,7 +68,7 @@ func writeIntoTable(tableDescriptor TableDescriptor, dataSet DataSet) error {
 				{
 					buf := bytes.NewBuffer(make([]byte, 0, getDataTypeByteSize(smallint)))
 					// binary writer is implicitly converting to uint16 with two's complement
-					err := binary.Write(buf, binary.BigEndian, uint16(cell.(int)))
+					err := binary.Write(buf, binary.BigEndian, cell.(int16))
 					if err != nil {
 						return err
 					}
@@ -251,23 +240,4 @@ func calculateRowBuffer(td TableDescriptor) int {
 
 func getTableDiskPath(source SchemaTable[string, string]) string {
 	return fmt.Sprintf("./data/%s.%s", source.schema, source.name)
-}
-
-func getDataTypeByteSize(dataType DataType) int {
-	switch dataType {
-	case smallint:
-		return 2 // int16
-	case integer:
-		return 4 // int32
-	case bigint:
-		return 8 // int64
-	case varchar:
-		return 16 // TODO: this should be configurable
-	case uniqueidentifier:
-		return 16
-	case boolean:
-		return 1
-	default:
-		panic("unhandled type")
-	}
 }

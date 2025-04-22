@@ -7,6 +7,17 @@ import (
 	"github.com/google/uuid"
 )
 
+type DataType string
+
+const (
+	smallint         DataType = "smallint"         // 2B
+	integer          DataType = "integer"          // 4
+	bigint           DataType = "bigint"           // 8
+	varchar          DataType = "varchar"          // fixed 16 for now
+	uniqueidentifier DataType = "uniqueidentifier" // 16
+	boolean          DataType = "boolean"          // 1
+)
+
 var (
 	ErrSmallintTypeConversion = AuraError{
 		Message: "type smallint conversion error",
@@ -44,5 +55,24 @@ func ConvertToConcreteType(sourceType DataType, value any) (any, error) {
 		}
 	default:
 		panic("invalid source type")
+	}
+}
+
+func getDataTypeByteSize(dataType DataType) int {
+	switch dataType {
+	case smallint:
+		return 2 // int16
+	case integer:
+		return 4 // int32
+	case bigint:
+		return 8 // int64
+	case varchar:
+		return 16 // TODO: this should be configurable
+	case uniqueidentifier:
+		return 16
+	case boolean:
+		return 1
+	default:
+		panic("unhandled type")
 	}
 }
