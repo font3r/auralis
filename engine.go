@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"log"
 )
 
@@ -98,21 +99,30 @@ func handleInsertQuery(query InsertQuery) (*DataSet, error) {
 }
 
 func handleCreateTableQuery(query CreateTableQuery) (*DataSet, error) {
-	// create test table
+	cds := []ColumnDescriptor{}
+	i := 1
+	for name, attributes := range query.columns {
+		if len(attributes) == 0 {
+			return nil, errors.New("missing data type for columns")
+		}
+
+		// TODO: validate data type
+		// if attributes[0] != string(uniqueidentifier) {
+
+		// }
+
+		cds = append(cds, ColumnDescriptor{
+			name:     name,
+			dataType: DataType(attributes[0]),
+			position: i,
+		})
+
+		i++
+	}
+
 	err := cretateTable(TableDescriptor{
-		schemaTable: SchemaTable[string, string]{"dbo", "users"},
-		columnDescriptors: []ColumnDescriptor{
-			{
-				name:     "name",
-				dataType: varchar,
-				position: 1,
-			},
-			{
-				name:     "age",
-				dataType: smallint,
-				position: 2,
-			},
-		},
+		schemaTable:       query.source,
+		columnDescriptors: cds,
 	})
 
 	if err != nil {
