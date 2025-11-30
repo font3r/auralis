@@ -8,8 +8,8 @@ const (
 	dataPath string = "./data"
 
 	internalSchema string = "auralis"
-	tables         string = "aura_tables"
-	columns        string = "aura_columns"
+	tables         string = "tables"
+	columns        string = "columns"
 
 	tablesPath  string = dataPath + "/" + internalSchema + "." + tables
 	columnsPath string = dataPath + "/" + internalSchema + "." + columns
@@ -27,7 +27,7 @@ type TableDescriptor struct {
 type ColumnDescriptor struct {
 	name     string
 	dataType DataType
-	position int
+	position int16
 	// attributes eg. PK
 }
 
@@ -132,7 +132,7 @@ func getTableDescriptor(source SchemaTable[string, string]) (TableDescriptor, er
 			}
 
 			if dataSet.columnDescriptors[i].name == "position" {
-				sourceColumnDescriptor.position = int(cell.(int16))
+				sourceColumnDescriptor.position = cell.(int16)
 			}
 		}
 
@@ -208,13 +208,13 @@ func addAuralisInternalTables() error {
 		columnDescriptors: auralisColumnsTableDescriptor.columnDescriptors,
 		rows: []Row{
 			{
-				cells: []any{"auralis", "aura_tables", "database_name", string(varchar), 1},
+				cells: []any{"auralis", "tables", "database_name", string(varchar), int16(1)},
 			},
 			{
-				cells: []any{"auralis", "aura_tables", "table_schema", string(varchar), 2},
+				cells: []any{"auralis", "tables", "table_schema", string(varchar), int16(2)},
 			},
 			{
-				cells: []any{"auralis", "aura_tables", "table_name", string(varchar), 3},
+				cells: []any{"auralis", "tables", "table_name", string(varchar), int16(3)},
 			},
 		},
 	})
@@ -227,19 +227,19 @@ func addAuralisInternalTables() error {
 		columnDescriptors: auralisColumnsTableDescriptor.columnDescriptors,
 		rows: []Row{
 			{
-				cells: []any{"auralis", "aura_columns", "table_schema", string(varchar), 1},
+				cells: []any{"auralis", "columns", "table_schema", string(varchar), int16(1)},
 			},
 			{
-				cells: []any{"auralis", "aura_columns", "table_name", string(varchar), 2},
+				cells: []any{"auralis", "columns", "table_name", string(varchar), int16(2)},
 			},
 			{
-				cells: []any{"auralis", "aura_columns", "column_name", string(varchar), 3},
+				cells: []any{"auralis", "columns", "column_name", string(varchar), int16(3)},
 			},
 			{
-				cells: []any{"auralis", "aura_columns", "data_type", string(varchar), 4},
+				cells: []any{"auralis", "columns", "data_type", string(varchar), int16(4)},
 			},
 			{
-				cells: []any{"auralis", "aura_columns", "position", string(smallint), 5},
+				cells: []any{"auralis", "columns", "position", string(smallint), int16(5)},
 			},
 		},
 	})

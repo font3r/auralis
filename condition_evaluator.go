@@ -30,17 +30,17 @@ func GetMatchingCondition(conditions []Condition, target string) []Condition {
 func EvaluateIntCondition[V int16 | int32 | int64](cond Condition, value V) bool {
 	switch cond.sign {
 	case "=":
-		return value == V(cond.value.(int))
+		return value == cond.value.(V)
 	case "!=":
-		return value != V(cond.value.(int))
+		return value != cond.value.(V)
 	case ">":
-		return value > V(cond.value.(int))
+		return value > cond.value.(V)
 	case ">=":
-		return value >= V(cond.value.(int))
+		return value >= cond.value.(V)
 	case "<":
-		return value < V(cond.value.(int))
+		return value < cond.value.(V)
 	case "<=":
-		return value <= V(cond.value.(int))
+		return value <= cond.value.(V)
 	default:
 		panic("invalid condition sign")
 	}
@@ -49,9 +49,9 @@ func EvaluateIntCondition[V int16 | int32 | int64](cond Condition, value V) bool
 func EvaluateStringCondition[V string](cond Condition, value V) bool {
 	switch cond.sign {
 	case "=":
-		return value == V(cond.value.(string))
+		return value == cond.value.(V)
 	case "!=":
-		return value != V(cond.value.(string))
+		return value != cond.value.(V)
 	default:
 		panic("invalid condition sign")
 	}

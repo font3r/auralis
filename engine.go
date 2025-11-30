@@ -100,7 +100,7 @@ func handleInsertQuery(query InsertQuery) (*DataSet, error) {
 
 func handleCreateTableQuery(query CreateTableQuery) (*DataSet, error) {
 	cds := []ColumnDescriptor{}
-	i := 1
+	var i int16 = 1
 	for name, attributes := range query.columns {
 		if len(attributes) == 0 {
 			return nil, errors.New("missing data type for columns")
