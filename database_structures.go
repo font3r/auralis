@@ -15,25 +15,21 @@ const (
 	columnsPath string = dataPath + "/" + internalSchema + "." + columns
 )
 
-var (
-	ErrTableDescriptorNotFound = AuraError{Code: "TABLE_DESCRIPTOR_NOT_FOUND", Message: "table descriptor not found"}
-)
-
-type TableDescriptor struct {
-	schemaTable       SchemaTable[string, string]
-	columnDescriptors []ColumnDescriptor // describes table schema
+type Table struct {
+	schemaTable SchemaTable[string, string]
+	columns     []Column // describes table schema
 }
 
-type ColumnDescriptor struct {
+type Column struct {
 	name     string
 	dataType DataType
 	position int16
 	// attributes eg. PK
 }
 
-var auralisTablesTableDescriptor = TableDescriptor{
+var auralisTables = Table{
 	schemaTable: SchemaTable[string, string]{internalSchema, tables},
-	columnDescriptors: []ColumnDescriptor{
+	columns: []Column{
 		{
 			name:     "database_name",
 			dataType: varchar,
@@ -52,9 +48,9 @@ var auralisTablesTableDescriptor = TableDescriptor{
 	},
 }
 
-var auralisColumnsTableDescriptor = TableDescriptor{
+var auralisColumnsTable = Table{
 	schemaTable: SchemaTable[string, string]{internalSchema, columns},
-	columnDescriptors: []ColumnDescriptor{
+	columns: []Column{
 		{
 			name:     "table_schema",
 			dataType: varchar,
@@ -106,79 +102,10 @@ func initDatabaseInternalStructure() {
 	}
 }
 
-func getTableDescriptor(source SchemaTable[string, string]) (TableDescriptor, error) {
-	dataSet, err := readFromTable(auralisColumnsTableDescriptor, SelectQuery{
-		source:      SchemaTable[string, string]{internalSchema, tables},
-		dataColumns: []string{"table_schema", "table_name", "column_name", "data_type", "position"},
-		conditions: []Condition{
-			{target: "table_schema", sign: "=", value: source.schema},
-			{target: "table_name", sign: "=", value: source.name},
-		},
-	})
-	if err != nil {
-		return TableDescriptor{}, err
-	}
-
-	sourceColumnDescriptors := []ColumnDescriptor{}
-	for _, row := range dataSet.rows {
-		sourceColumnDescriptor := ColumnDescriptor{}
-		for i, cell := range row.cells {
-			if dataSet.columnDescriptors[i].name == "column_name" {
-				sourceColumnDescriptor.name = cell.(string)
-			}
-
-			if dataSet.columnDescriptors[i].name == "data_type" {
-				sourceColumnDescriptor.dataType = DataType(cell.(string))
-			}
-
-			if dataSet.columnDescriptors[i].name == "position" {
-				sourceColumnDescriptor.position = cell.(int16)
-			}
-		}
-
-		sourceColumnDescriptors = append(sourceColumnDescriptors, sourceColumnDescriptor)
-	}
-
-	return TableDescriptor{
-		schemaTable:       source,
-		columnDescriptors: sourceColumnDescriptors,
-	}, nil
-}
-
-func addTableDescriptor(tableDescriptor TableDescriptor) error {
-	writeIntoTable(auralisTablesTableDescriptor,
-		DataSet{
-			columnDescriptors: auralisTablesTableDescriptor.columnDescriptors,
-			rows: []Row{
-				{
-					cells: []any{"test-database", tableDescriptor.schemaTable.schema,
-						tableDescriptor.schemaTable.name},
-				},
-			},
-		})
-
-	rows := []Row{}
-	for _, cd := range tableDescriptor.columnDescriptors {
-		rows = append(rows, Row{
-			cells: []any{
-				tableDescriptor.schemaTable.schema, tableDescriptor.schemaTable.name,
-				cd.name, string(cd.dataType), cd.position,
-			},
-		})
-	}
-
-	writeIntoTable(auralisColumnsTableDescriptor, DataSet{
-		columnDescriptors: auralisColumnsTableDescriptor.columnDescriptors,
-		rows:              rows,
-	})
-
-	return nil
-}
-
 func addAuralisInternalTables() error {
-	err := writeIntoTable(auralisTablesTableDescriptor,
+	err := writeIntoTable(auralisTables,
 		DataSet{
-			columnDescriptors: auralisTablesTableDescriptor.columnDescriptors,
+			columns: auralisTables.columns,
 			rows: []Row{
 				{
 					cells: []any{"auralis", internalSchema, tables},
@@ -190,9 +117,9 @@ func addAuralisInternalTables() error {
 		return err
 	}
 
-	err = writeIntoTable(auralisTablesTableDescriptor,
+	err = writeIntoTable(auralisTables,
 		DataSet{
-			columnDescriptors: auralisTablesTableDescriptor.columnDescriptors,
+			columns: auralisTables.columns,
 			rows: []Row{
 				{
 					cells: []any{"auralis", internalSchema, columns},
@@ -204,8 +131,8 @@ func addAuralisInternalTables() error {
 		return err
 	}
 
-	err = writeIntoTable(auralisColumnsTableDescriptor, DataSet{
-		columnDescriptors: auralisColumnsTableDescriptor.columnDescriptors,
+	err = writeIntoTable(auralisColumnsTable, DataSet{
+		columns: auralisColumnsTable.columns,
 		rows: []Row{
 			{
 				cells: []any{"auralis", "tables", "database_name", string(varchar), int16(1)},
@@ -223,8 +150,8 @@ func addAuralisInternalTables() error {
 		return err
 	}
 
-	err = writeIntoTable(auralisColumnsTableDescriptor, DataSet{
-		columnDescriptors: auralisColumnsTableDescriptor.columnDescriptors,
+	err = writeIntoTable(auralisColumnsTable, DataSet{
+		columns: auralisColumnsTable.columns,
 		rows: []Row{
 			{
 				cells: []any{"auralis", "columns", "table_schema", string(varchar), int16(1)},
@@ -247,6 +174,75 @@ func addAuralisInternalTables() error {
 	if err != nil {
 		return err
 	}
+
+	return nil
+}
+
+func getTable(source SchemaTable[string, string]) (Table, error) {
+	dataSet, err := readFromTable(auralisColumnsTable, SelectQuery{
+		source:      SchemaTable[string, string]{internalSchema, tables},
+		dataColumns: []string{"table_schema", "table_name", "column_name", "data_type", "position"},
+		conditions: []Condition{
+			{target: "table_schema", sign: "=", value: source.schema},
+			{target: "table_name", sign: "=", value: source.name},
+		},
+	})
+	if err != nil {
+		return Table{}, err
+	}
+
+	sourceColumns := []Column{}
+	for _, row := range dataSet.rows {
+		sourceColumn := Column{}
+		for i, cell := range row.cells {
+			if dataSet.columns[i].name == "column_name" {
+				sourceColumn.name = cell.(string)
+			}
+
+			if dataSet.columns[i].name == "data_type" {
+				sourceColumn.dataType = DataType(cell.(string))
+			}
+
+			if dataSet.columns[i].name == "position" {
+				sourceColumn.position = cell.(int16)
+			}
+		}
+
+		sourceColumns = append(sourceColumns, sourceColumn)
+	}
+
+	return Table{
+		schemaTable: source,
+		columns:     sourceColumns,
+	}, nil
+}
+
+func addTable(table Table) error {
+	writeIntoTable(auralisTables,
+		DataSet{
+			columns: auralisTables.columns,
+			rows: []Row{
+				{
+					cells: []any{"test-database", table.schemaTable.schema,
+						table.schemaTable.name},
+				},
+			},
+		})
+
+	rows := []Row{}
+	for _, cd := range table.columns {
+		rows = append(rows, Row{
+			cells: []any{
+				table.schemaTable.schema, table.schemaTable.name,
+				cd.name, string(cd.dataType), cd.position,
+			},
+		})
+	}
+
+	writeIntoTable(auralisColumnsTable, DataSet{
+		columns: auralisColumnsTable.columns,
+		rows:    rows,
+	})
 
 	return nil
 }

@@ -40,7 +40,7 @@ func displayDataSet(dataSet *DataSet) {
 	t.SetStyle(style)
 
 	tableHeader := table.Row{}
-	for _, cd := range dataSet.columnDescriptors {
+	for _, cd := range dataSet.columns {
 		tableHeader = append(tableHeader, cd.name)
 	}
 	t.AppendHeader(tableHeader)

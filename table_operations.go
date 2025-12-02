@@ -15,8 +15,8 @@ import (
 )
 
 type DataSet struct {
-	columnDescriptors []ColumnDescriptor
-	rows              []Row
+	columns []Column
+	rows    []Row
 }
 
 type Row struct {
@@ -29,13 +29,13 @@ var (
 
 const terminationByte = byte(10)
 
-func cretateTable(td TableDescriptor) error {
-	err := addTableDescriptor(td)
+func cretateTable(table Table) error {
+	err := addTable(table)
 	if err != nil {
 		return err
 	}
 
-	f, err := os.Create(getTableDiskPath(td.schemaTable))
+	f, err := os.Create(getTableDiskPath(table.schemaTable))
 	if err != nil {
 		return err
 	}
@@ -44,9 +44,9 @@ func cretateTable(td TableDescriptor) error {
 	return nil
 }
 
-func writeIntoTable(tableDescriptor TableDescriptor, dataSet DataSet) error {
+func writeIntoTable(table Table, dataSet DataSet) error {
 	log.Printf("INFO: executing insert query %+v", dataSet)
-	f, err := os.OpenFile(getTableDiskPath(tableDescriptor.schemaTable), os.O_WRONLY|os.O_APPEND, 0600)
+	f, err := os.OpenFile(getTableDiskPath(table.schemaTable), os.O_WRONLY|os.O_APPEND, 0600)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return ErrTableNotFound
@@ -55,15 +55,14 @@ func writeIntoTable(tableDescriptor TableDescriptor, dataSet DataSet) error {
 	}
 	defer f.Close()
 
-	log.Printf("INFO: %s.%s table descriptor %+v\n", tableDescriptor.schemaTable.schema,
-		tableDescriptor.schemaTable.name, tableDescriptor)
+	log.Printf("INFO: %s.%s table %+v\n", table.schemaTable.schema, table.schemaTable.name, table)
 
 	w := bufio.NewWriter(f)
 
 	for _, row := range dataSet.rows {
 		for cellIndex, cell := range row.cells {
 			var val []byte
-			switch tableDescriptor.columnDescriptors[cellIndex].dataType {
+			switch table.columns[cellIndex].dataType {
 			case smallint:
 				{
 					buf := bytes.NewBuffer(make([]byte, 0, getDataTypeByteSize(smallint)))
@@ -113,9 +112,9 @@ func writeIntoTable(tableDescriptor TableDescriptor, dataSet DataSet) error {
 	return nil
 }
 
-func readFromTable(tableDescriptor TableDescriptor, query SelectQuery) (*DataSet, error) {
+func readFromTable(table Table, query SelectQuery) (*DataSet, error) {
 	log.Printf("INFO: executing select query %+v", query)
-	f, err := os.Open(getTableDiskPath(tableDescriptor.schemaTable))
+	f, err := os.Open(getTableDiskPath(table.schemaTable))
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return nil, ErrTableNotFound
@@ -125,18 +124,18 @@ func readFromTable(tableDescriptor TableDescriptor, query SelectQuery) (*DataSet
 	}
 	defer f.Close()
 
-	log.Printf("INFO: %s.%s table descriptor %+v\n", tableDescriptor.schemaTable.schema,
-		tableDescriptor.schemaTable.name, tableDescriptor)
+	log.Printf("INFO: %s.%s table %+v\n", table.schemaTable.schema,
+		table.schemaTable.name, table)
 
 	dataSet := DataSet{}
-	for _, v := range tableDescriptor.columnDescriptors {
+	for _, v := range table.columns {
 		if slices.Contains(query.dataColumns, v.name) {
-			dataSet.columnDescriptors = append(dataSet.columnDescriptors, v)
+			dataSet.columns = append(dataSet.columns, v)
 		}
 	}
 
 	var fileOffset int64 = 0
-	rowBuffSize := calculateRowBuffer(tableDescriptor)
+	rowBuffSize := calculateRowBuffer(table)
 	rowBuf := make([]byte, rowBuffSize)
 
 	for {
@@ -154,7 +153,7 @@ func readFromTable(tableDescriptor TableDescriptor, query SelectQuery) (*DataSet
 		includeRow := true
 
 		var cellDataSize int
-		for _, cd := range tableDescriptor.columnDescriptors {
+		for _, cd := range table.columns {
 			if !slices.Contains(query.dataColumns, cd.name) {
 				rowOffset += getDataTypeByteSize(cd.dataType)
 				continue
@@ -228,9 +227,9 @@ func readFromTable(tableDescriptor TableDescriptor, query SelectQuery) (*DataSet
 	return &dataSet, nil
 }
 
-func calculateRowBuffer(td TableDescriptor) int {
+func calculateRowBuffer(table Table) int {
 	size := 0
-	for _, v := range td.columnDescriptors {
+	for _, v := range table.columns {
 		size += getDataTypeByteSize(v.dataType)
 	}
 	size += 1 // termination byte

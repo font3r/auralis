@@ -6,8 +6,8 @@ type Condition struct {
 	value  any
 }
 
-func ConvertConditionType(td TableDescriptor, cond *Condition) error {
-	for _, cd := range td.columnDescriptors {
+func ConvertConditionType(td Table, cond *Condition) error {
+	for _, cd := range td.columns {
 		if cond.target == cd.name {
 			value, err := ConvertToConcreteType(cd.dataType, cond.value)
 			if err != nil {

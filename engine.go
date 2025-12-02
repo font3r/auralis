@@ -37,14 +37,14 @@ func ExecuteQuery(raw string) (*DataSet, error) {
 }
 
 func handleSelectQuery(query SelectQuery) (*DataSet, error) {
-	tableDescriptor, err := getTableDescriptor(query.source)
+	table, err := getTable(query.source)
 	if err != nil {
 		return &DataSet{}, err
 	}
 
 	if len(query.dataColumns) == 1 && query.dataColumns[0] == "*" {
 		query.dataColumns = make([]string, 0)
-		for _, cd := range tableDescriptor.columnDescriptors {
+		for _, cd := range table.columns {
 			query.dataColumns = append(query.dataColumns, cd.name)
 		}
 	}
@@ -52,14 +52,14 @@ func handleSelectQuery(query SelectQuery) (*DataSet, error) {
 	// TODO: validate conditions, eg. data types
 	if len(query.conditions) > 0 {
 		for i := range query.conditions {
-			err := ConvertConditionType(tableDescriptor, &query.conditions[i])
+			err := ConvertConditionType(table, &query.conditions[i])
 			if err != nil {
 				return &DataSet{}, err
 			}
 		}
 	}
 
-	dataSet, err := readFromTable(tableDescriptor, query)
+	dataSet, err := readFromTable(table, query)
 	if err != nil {
 		return &DataSet{}, err
 	}
@@ -68,18 +68,18 @@ func handleSelectQuery(query SelectQuery) (*DataSet, error) {
 }
 
 func handleInsertQuery(query InsertQuery) (*DataSet, error) {
-	tableDescriptor, err := getTableDescriptor(query.source)
+	table, err := getTable(query.source)
 	if err != nil {
 		return &DataSet{}, err
 	}
 
-	// TODO: validate provided data against table descriptor and cast datatype
+	// TODO: validate provided data against table and cast datatype
 	// TODO: handle default values in case of non-null columns (that are also not supported)
 	rows := []Row{}
 	for _, valueRow := range query.values {
 		row := Row{cells: make([]any, 0, len(valueRow))}
 		for i, valueCell := range valueRow {
-			value, err := ConvertToConcreteType(tableDescriptor.columnDescriptors[i].dataType, valueCell)
+			value, err := ConvertToConcreteType(table.columns[i].dataType, valueCell)
 			if err != nil {
 				return &DataSet{}, err
 			}
@@ -90,16 +90,16 @@ func handleInsertQuery(query InsertQuery) (*DataSet, error) {
 		rows = append(rows, row)
 	}
 
-	err = writeIntoTable(tableDescriptor, DataSet{
-		columnDescriptors: tableDescriptor.columnDescriptors,
-		rows:              rows,
+	err = writeIntoTable(table, DataSet{
+		columns: table.columns,
+		rows:    rows,
 	})
 
 	return nil, err
 }
 
 func handleCreateTableQuery(query CreateTableQuery) (*DataSet, error) {
-	cds := []ColumnDescriptor{}
+	cds := []Column{}
 	var i int16 = 1
 	for name, attributes := range query.columns {
 		if len(attributes) == 0 {
@@ -111,7 +111,7 @@ func handleCreateTableQuery(query CreateTableQuery) (*DataSet, error) {
 
 		// }
 
-		cds = append(cds, ColumnDescriptor{
+		cds = append(cds, Column{
 			name:     name,
 			dataType: DataType(attributes[0]),
 			position: i,
@@ -120,9 +120,9 @@ func handleCreateTableQuery(query CreateTableQuery) (*DataSet, error) {
 		i++
 	}
 
-	err := cretateTable(TableDescriptor{
-		schemaTable:       query.source,
-		columnDescriptors: cds,
+	err := cretateTable(Table{
+		schemaTable: query.source,
+		columns:     cds,
 	})
 
 	if err != nil {
